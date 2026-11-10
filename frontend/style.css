@@ -1,1 +1,258 @@
+:root {
+  --background: #090b10;
+  --surface: #151923;
+  --surface-light: #202735;
+  --primary: #ffd429;
+  --blue: #75dcff;
+  --text: #f5f7ff;
+  --muted: #929bad;
+  --border: #2b3240;
+}
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, #24200d 0%, transparent 38%), var(--background);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+.app {
+  width: 100%;
+  max-width: 850px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: #111;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: bold;
+  box-shadow: 0 0 20px #ffd42935;
+}
+
+.header h1 {
+  font-size: 21px;
+  color: var(--primary);
+}
+
+.header p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.mode-selector {
+  display: flex;
+  gap: 10px;
+  margin: 22px 0 8px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.mode-selector button {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mode-selector button.active {
+  background: var(--primary);
+  color: #151515;
+}
+
+.view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.welcome {
+  text-align: center;
+  margin: 55px 0 30px;
+}
+
+.welcome h2 {
+  font-size: 25px;
+  margin-bottom: 10px;
+}
+
+.welcome p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.chat {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px 0;
+}
+
+.message {
+  max-width: 85%;
+  padding: 15px;
+  border-radius: 16px;
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.assistant {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+}
+
+.user {
+  align-self: flex-end;
+  background: var(--primary);
+  color: #151515;
+}
+
+#chat-form {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+#message-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 15px;
+}
+
+#message-input::placeholder {
+  color: var(--muted);
+}
+
+#chat-form button {
+  background: var(--primary);
+  color: #151515;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#chat-form button:hover {
+  box-shadow: 0 0 15px #ffd42955;
+}
+
+.voice-container {
+  flex: 1;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.orb {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #ffffff 0%,
+    #baf2ff 9%,
+    #75dcff 28%,
+    #2d91c5 57%,
+    #132f54 78%,
+    #090b10 100%
+  );
+  box-shadow: 0 0 35px #75dcff55, 0 0 85px #75dcff25;
+  animation: orbPulse 3s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%, 100% {
+    transform: scale(0.96);
+    filter: brightness(0.95);
+  }
+
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.18);
+  }
+}
+
+.voice-container h2 {
+  color: var(--primary);
+}
+
+.voice-container p {
+  color: var(--muted);
+}
+
+footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 18px 0 5px;
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 15px;
+  }
+
+  .welcome {
+    margin-top: 40px;
+  }
+
+  .welcome h2 {
+    font-size: 21px;
+  }
+
+  .orb {
+    width: 145px;
+    height: 145px;
+  }
+  }

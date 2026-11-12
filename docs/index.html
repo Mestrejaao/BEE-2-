@@ -8,7 +8,25 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app">
+ <section id="login-view" class="login-view">
+  <div class="login-box">
+    <div class="logo">B</div>
+    <h1>Identificação BEE</h1>
+    <p>Digite seu código de identificação para continuar.</p>
+
+    <form id="login-form">
+      <input
+        id="access-code"
+        type="password"
+        placeholder="Código de identificação"
+        autocomplete="off"
+      >
+      <button type="submit">Entrar</button>
+      <p id="login-error"></p>
+    </form>
+  </div>
+ </section>
+  <main class="app hidden" id="app-view">
 
     <header class="header">
       <div class="logo">B</div>

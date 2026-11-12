@@ -1,7 +1,24 @@
 const chat = document.getElementById("chat");
 const form = document.getElementById("chat-form");
 const input = document.getElementById("message-input");
+const loginForm = document.getElementById("login-form");
+const accessInput = document.getElementById("access-code");
+const loginError = document.getElementById("login-error");
+const loginView = document.getElementById("login-view");
+const appView = document.getElementById("app-view");
 
+loginForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const code = accessInput.value.trim();
+
+  if (code === "BEE-TESTE") {
+    loginView.classList.add("hidden");
+    appView.classList.remove("hidden");
+  } else {
+    loginError.textContent = "Código incorreto. Tente novamente.";
+  }
+});
 const textButton = document.getElementById("mode-text");
 const voiceButton = document.getElementById("mode-voice");
 

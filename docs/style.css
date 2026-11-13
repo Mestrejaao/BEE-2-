@@ -256,3 +256,80 @@ footer {
     height: 145px;
   }
   }
+/* TELA DE IDENTIFICAÇÃO BEE */
+.login-view {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top, #202735 0%, #090b10 65%);
+}
+
+.login-box {
+  width: 100%;
+  max-width: 380px;
+  padding: 35px 25px;
+  text-align: center;
+  background: #151923;
+  border: 1px solid rgba(255, 212, 41, 0.3);
+  border-radius: 18px;
+  box-shadow: 0 0 35px rgba(255, 212, 41, 0.08);
+}
+
+.login-box .logo {
+  margin: 0 auto 20px;
+}
+
+.login-box h1 {
+  color: #ffd429;
+  margin-bottom: 10px;
+}
+
+.login-box p {
+  color: #b8c0cc;
+  margin-bottom: 22px;
+}
+
+#login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#access-code {
+  width: 100%;
+  padding: 14px;
+  color: white;
+  background: #090b10;
+  border: 1px solid #343d4d;
+  border-radius: 9px;
+  font-size: 16px;
+  outline: none;
+}
+
+#access-code:focus {
+  border-color: #ffd429;
+}
+
+#login-form button {
+  padding: 14px;
+  color: #090b10;
+  background: #ffd429;
+  border: none;
+  border-radius: 9px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#login-form button:hover {
+  background: #ffe36b;
+}
+
+#login-error {
+  color: #ff6b6b !important;
+  font-size: 14px;
+  margin: 0;
+    }

@@ -66,12 +66,26 @@ Lovable não é um provedor de inferência de texto equivalente a OpenAI/Claude.
 - Chaves e código de acesso nunca são enviados ao navegador.
 - Login validado no Worker; token HMAC expira em 12 horas e fica em `sessionStorage`.
 - CORS permite apenas origens configuradas.
-- O endpoint de chat exige sessão e limita histórico, tamanho de mensagem e corpo. Configure no painel Cloudflare uma regra de Rate Limiting para `POST /api/auth/login` (por exemplo, 5 tentativas por minuto por IP), pois a proteção anti-força-bruta é aplicada na borda, não em memória no Worker.
-- O Rate Limiting nativo do Workers é aproximado e regional; não o trate como limite global estrito.
+- O Worker usa os bindings nativos `LOGIN_RATE_LIMITER` e `CHAT_RATE_LIMITER` do Cloudflare Workers: login permite até 5 tentativas por 60 segundos por IP; chat permite até 20 chamadas por 60 segundos por conta BEE autenticada. Os limites são definidos em `wrangler.jsonc` e não exigem secrets adicionais nem regras manuais no painel.
+- O IP do login é obtido exclusivamente do cabeçalho `CF-Connecting-IP`, definido pela infraestrutura Cloudflare. Cabeçalhos controláveis pelo cliente, como `X-Forwarded-For` e `X-Real-IP`, são ignorados. Se o IP confiável ou o binding não estiver disponível, o endpoint falha fechado com HTTP 503 em vez de desativar a proteção.
+- Quando o limite é excedido, a API retorna HTTP 429 e `Retry-After: 60`. Erros de infraestrutura do rate limiter também falham fechados com HTTP 503.
+- O limite de chat usa a identidade `bee-user:chat` validada pela sessão, agregando todas as sessões do código BEE atual. Para separar usuários no futuro, use um identificador estável e validado por usuário na chave.
+- **Limitação do Rate Limiting API:** os contadores são aproximados e independentes por localização Cloudflare; pode haver excesso temporário e não existe uma quota global estrita. Isso é adequado como proteção inicial de abuso. Se a BEE precisar de limite global estrito entre regiões, migre o contador para Durable Objects com uma instância por identidade.
 - O histórico de conversa fica no navegador; não há banco de dados nem persistência server-side nesta etapa.
 - O Worker serve a interface de `frontend/` e encaminha somente `/api/*` ao código do Worker. A pasta `docs/` é uma publicação alternativa estática e precisa apontar para a URL do Worker.
 - O modo voz permanece como estava: interface preservada, integração de voz ainda não implementada.
 
+## Rate limiting (Cloudflare Workers)
+
+Os bindings já estão declarados em `wrangler.jsonc` e usam namespaces distintos (`2001` para login e `2002` para chat). Os valores padrão podem ser ajustados ali:
+
+| Binding | Chave de contagem | Limite |
+| --- | --- | --- |
+| `LOGIN_RATE_LIMITER` | IP confiável Cloudflare (`CF-Connecting-IP`) | 5 / 60 segundos |
+| `CHAT_RATE_LIMITER` | identidade da conta autenticada `bee-user:chat` | 20 / 60 segundos |
+
+A Rate Limiting API requer Wrangler 4.36.0 ou superior (o projeto usa Wrangler 4.50+). Para validar o Worker localmente, os testes injetam bindings simulados; eles verificam bloqueio HTTP 429, `Retry-After`, ausência de fallback para IP falsificável e comportamento fail-closed. A decisão real e os contadores são fornecidos pela Cloudflare quando o Worker é executado na infraestrutura Cloudflare.
+
 ## Verificações
 
-Execute `npm test` para os testes unitários do seletor. `npm run dev` inicia o Worker localmente. Nenhuma implantação é executada por estes comandos.
+Execute `npm test` para os testes automatizados. `npm run dev` inicia o Worker localmente. Nenhuma implantação é executada por estes comandos.

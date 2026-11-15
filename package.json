@@ -10,5 +10,9 @@
   },
   "devDependencies": {
     "wrangler": "^4.50.0"
+  },
+  "dependencies": {
+    "@upstash/ratelimit": "^2.2.1",
+    "@upstash/redis": "^1.41.0"
   }
 }

@@ -282,7 +282,7 @@ button, input, textarea { font: inherit; color: inherit; }
   var sendBtn = document.getElementById("send");
   var subLabel = document.getElementById("subLabel");
   var busy = false;
-  var API_BASE = (window.BEE_API_BASE || "").replace(/\\/$/, "");
+  var API_BASE = (window.BEE_API_BASE || "").replace(/\/$/, "");
   var sessionToken = sessionStorage.getItem("bee-session") || "";
   var apiHistory = [];
 

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "bee-ai-backend",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-15",
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:8787,http://127.0.0.1:8787"
+  }
+}

@@ -7,6 +7,33 @@ const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache
 const MAX_BODY_BYTES = 32 * 1024;
 const MAX_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 8000;
+const RATE_LIMIT_HEADERS = { "Retry-After": "60" };
+
+function trustedClientIp(request) {
+  // Cloudflare overwrites CF-Connecting-IP at its edge. Never use client-controlled
+  // X-Forwarded-For / X-Real-IP headers as an identity source.
+  const ip = request.headers.get("CF-Connecting-IP");
+  return ip && ip.length <= 64 ? ip : null;
+}
+
+async function checkRateLimit(binding, key) {
+  if (!binding || typeof binding.limit !== "function") return "unavailable";
+  try {
+    const result = await binding.limit({ key });
+    return result?.success === true ? "allowed" : "limited";
+  } catch (error) {
+    console.error("BEE rate limiter failed:", error?.message || "unknown error");
+    return "unavailable";
+  }
+}
+
+function rateLimitResponse(cors) {
+  return json({ error: "Muitas requisições. Aguarde um minuto antes de tentar novamente." }, 429, { ...cors, ...RATE_LIMIT_HEADERS });
+}
+
+function rateLimitUnavailable(cors) {
+  return json({ error: "Proteção temporariamente indisponível. Tente novamente em instantes." }, 503, cors);
+}
 
 function allowedOrigins(env) {
   return (env.ALLOWED_ORIGINS || "")
@@ -61,6 +88,12 @@ function validateMessages(messages) {
 }
 
 async function handleLogin(request, env, cors) {
+  const ip = trustedClientIp(request);
+  if (!ip) return rateLimitUnavailable(cors);
+  const rate = await checkRateLimit(env.LOGIN_RATE_LIMITER, `login:${ip}`);
+  if (rate === "limited") return rateLimitResponse(cors);
+  if (rate === "unavailable") return rateLimitUnavailable(cors);
+
   if (!env.BEE_ACCESS_CODE || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
     return json({ error: "Autenticação não configurada: defina BEE_ACCESS_CODE e SESSION_SECRET (mínimo de 32 caracteres)." }, 503, cors);
   }
@@ -76,6 +109,10 @@ async function handleLogin(request, env, cors) {
 }
 
 async function handleChat(request, env, cors) {
+  const rate = await checkRateLimit(env.CHAT_RATE_LIMITER, "bee-user:chat");
+  if (rate === "limited") return rateLimitResponse(cors);
+  if (rate === "unavailable") return rateLimitUnavailable(cors);
+
   if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32 ||
       !(await verifySession(bearerToken(request), env.SESSION_SECRET))) {
     return json({ error: "Sessão inválida ou expirada. Entre novamente." }, 401, cors);

@@ -1,3 +1,5 @@
+> **Migração em andamento:** a entrada Vercel está preparada em `api/[...path].js`, mas login e chat permanecem bloqueados com HTTP 503 até existir rate limiting durável, funcional e aprovado sem cobrança. Não configure nem publique a Vercel antes dessa validação. A configuração Cloudflare abaixo foi mantida intacta como fallback e referência; ela não foi removida nem substituída.
+
 # BEE
 
 Assistente pessoal com frontend estático e API modular em Cloudflare Workers.
@@ -92,3 +94,21 @@ A Rate Limiting API requer Wrangler 4.36.0 ou superior (o projeto usa Wrangler 4
 ## Verificações
 
 Execute `npm test` para os testes automatizados. `npm run dev` inicia o Worker localmente. Nenhuma implantação é executada por estes comandos.
+
+
+## Migração planejada para Vercel (não publicada)
+
+- A Function Node.js de `api/[...path].js` encaminha as requisições para o handler compartilhado em `src/index.js`.
+- `GET /api/health` pode ser validado sem secrets ou chamadas a provedores.
+- Login e chat retornam HTTP 503 quando os bindings de rate limiting não existem. Isso é intencional: a Function não usa contadores em memória e não libera autenticação/chat sem proteção contra abuso.
+- As rotas antigas do Worker e seus testes continuam disponíveis. `wrangler.jsonc`, a dependência Wrangler e as configurações Cloudflare foram preservados para permitir rollback até a nova arquitetura ser validada.
+- Para Vercel, cadastre secrets somente no painel da Vercel, depois de aprovar a conta e o plano: `BEE_ACCESS_CODE`, `SESSION_SECRET`, `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY`. Nenhum segredo foi configurado nesta migração.
+- O Vercel Firewall/WAF pode oferecer rate limiting conforme o plano e a franquia de uso. A documentação pública informa franquia de requisições permitidas e preço por excedente; portanto, não foi ativado nem considerado garantidamente sem custo. A regra também precisa ser criada e validada no projeto antes de liberar as rotas protegidas.
+- Não use armazenamento em memória, variáveis locais de processo ou arquivos temporários como contador de requisições em Functions serverless.
+- A URL em `docs/bee-config.js` permanece inalterada até que a arquitetura Vercel, a proteção e o endpoint real sejam validados. O frontend continua no GitHub Pages.
+
+### Verificações locais
+
+- `npm test`: executa testes com mocks, sem chamadas reais à OpenAI ou Anthropic.
+- `npm run dev:vercel`: inicia o ambiente local Vercel quando o CLI estiver disponível e autorizado na máquina. Não faz deploy.
+- A rota de saúde é esperada em `/api/health`; login/chat devem permanecer indisponíveis (503) até a proteção durável ser configurada e testada.

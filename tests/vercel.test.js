@@ -128,6 +128,26 @@ test("unknown limiter result and thrown Redis errors both fail closed with 503",
   }
 });
 
+
+test("chat returns 503 when the session limiter errors or gives an inconclusive result", async () => {
+  const token = await createSession(secret);
+  for (const limit of [
+    async () => ({ success: null }),
+    async () => { throw new Error("Redis timeout"); }
+  ]) {
+    const handler = createVercelHandler(() => env, () => ({
+      loginRateLimiter: { limit: async () => ({ success: true }) },
+      chatRateLimiter: { limit }
+    }));
+    const response = await handler.fetch(request("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messages: [{ role: "user", content: "Oi!" }] })
+    }));
+    assert.equal(response.status, 503);
+  }
+});
+
 test("Vercel adapter rejects an unapproved origin", async () => {
   const handler = createVercelHandler(() => env, allowedLimiters);
   const response = await handler.fetch(new Request("https://bee.vercel.app/api/health", {

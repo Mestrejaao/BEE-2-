@@ -11,6 +11,7 @@ Assistente pessoal com frontend estático e API modular em Cloudflare Workers.
 - `frontend/index.html`: redirecionamento para a interface canônica em `docs/` (evita manter duas cópias da UI).
 - `src/index.js`: rotas HTTP, autenticação e orquestração.
 - `src/security/session.js`: sessões HMAC com validade de 12 horas.
+- `src/security/upstash-rate-limit.js`: adaptador Vercel para limitadores duráveis Upstash, sem cache em memória.
 - `src/router/selector.js`: seleção automática de provedor e fallback.
 - `src/providers/`: adaptadores oficiais OpenAI Responses API e Anthropic Messages API.
 - `tests/`: testes automatizados do seletor, sessões, rotas HTTP e rate limiting.
@@ -74,7 +75,7 @@ Lovable não é um provedor de inferência de texto equivalente a OpenAI/Claude.
 - O Worker usa os bindings nativos `LOGIN_RATE_LIMITER` e `CHAT_RATE_LIMITER` do Cloudflare Workers: login permite até 5 tentativas por 60 segundos por IP; chat permite até 20 chamadas por 60 segundos por conta BEE autenticada. Os limites são definidos em `wrangler.jsonc` e não exigem secrets adicionais nem regras manuais no painel.
 - O IP do login é obtido exclusivamente do cabeçalho `CF-Connecting-IP`, definido pela infraestrutura Cloudflare. Cabeçalhos controláveis pelo cliente, como `X-Forwarded-For` e `X-Real-IP`, são ignorados. Se o IP confiável ou o binding não estiver disponível, o endpoint falha fechado com HTTP 503 em vez de desativar a proteção.
 - Quando o limite é excedido, a API retorna HTTP 429 e `Retry-After: 60`. Erros de infraestrutura do rate limiter também falham fechados com HTTP 503.
-- O limite de chat usa a identidade `bee-user:chat` validada pela sessão, agregando todas as sessões do código BEE atual. Para separar usuários no futuro, use um identificador estável e validado por usuário na chave.
+- No Worker Cloudflare, o limite de chat continua usando a identidade `bee-user:chat`, preservando o comportamento anterior. Na Function Vercel, cada sessão autenticada recebe uma chave SHA-256 do token; o token original nunca é enviado ao Redis.
 - **Limitação do Rate Limiting API:** os contadores são aproximados e independentes por localização Cloudflare; pode haver excesso temporário e não existe uma quota global estrita. Isso é adequado como proteção inicial de abuso. Se a BEE precisar de limite global estrito entre regiões, migre o contador para Durable Objects com uma instância por identidade.
 - O histórico de conversa fica no navegador; não há banco de dados nem persistência server-side nesta etapa.
 - O Worker é exclusivamente backend: responde às rotas `/api/*` e não publica arquivos estáticos. O GitHub Pages publica a interface a partir de `docs/`; `docs/bee-config.js` é o único ponto para configurar o endereço da API.
@@ -100,9 +101,10 @@ Execute `npm test` para os testes automatizados. `npm run dev` inicia o Worker l
 
 - A Function Node.js de `api/[...path].js` encaminha as requisições para o handler compartilhado em `src/index.js`.
 - `GET /api/health` pode ser validado sem secrets ou chamadas a provedores.
-- Login e chat retornam HTTP 503 quando os bindings de rate limiting não existem. Isso é intencional: a Function não usa contadores em memória e não libera autenticação/chat sem proteção contra abuso.
+- Login e chat usam `@upstash/ratelimit` + `@upstash/redis`, com janelas deslizantes separadas: 5 tentativas/60 s por IP no login e 20 chamadas/60 s por sessão no chat. O IP é aceito somente pelo `X-Forwarded-For` que a Vercel sobrescreve, e apenas quando contém um único endereço IP válido. Sem credenciais ou limitador, a Function retorna HTTP 503.
+- O cache `ephemeralCache` está explicitamente desativado. Respostas de timeout do SDK (que normalmente podem permitir a requisição) são convertidas em resultado inconclusivo e retornam HTTP 503. Erros, respostas malformadas e indisponibilidade também falham fechados.
 - As rotas antigas do Worker e seus testes continuam disponíveis. `wrangler.jsonc`, a dependência Wrangler e as configurações Cloudflare foram preservados para permitir rollback até a nova arquitetura ser validada.
-- Para Vercel, cadastre secrets somente no painel da Vercel, depois de aprovar a conta e o plano: `BEE_ACCESS_CODE`, `SESSION_SECRET`, `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY`. Nenhum segredo foi configurado nesta migração.
+- Para Vercel, as variáveis server-side esperadas são `BEE_ACCESS_CODE`, `SESSION_SECRET`, `OPENAI_API_KEY` e/ou `ANTHROPIC_API_KEY`, além de `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`. Nenhum segredo foi configurado nesta implementação; não crie recursos nem cadastre credenciais sem avaliar antes o plano e os custos do Upstash.
 - O Vercel Firewall/WAF pode oferecer rate limiting conforme o plano e a franquia de uso. A documentação pública informa franquia de requisições permitidas e preço por excedente; portanto, não foi ativado nem considerado garantidamente sem custo. A regra também precisa ser criada e validada no projeto antes de liberar as rotas protegidas.
 - Não use armazenamento em memória, variáveis locais de processo ou arquivos temporários como contador de requisições em Functions serverless.
 - A URL em `docs/bee-config.js` permanece inalterada até que a arquitetura Vercel, a proteção e o endpoint real sejam validados. O frontend continua no GitHub Pages.
@@ -111,4 +113,4 @@ Execute `npm test` para os testes automatizados. `npm run dev` inicia o Worker l
 
 - `npm test`: executa testes com mocks, sem chamadas reais à OpenAI ou Anthropic.
 - `npm run dev:vercel`: inicia o ambiente local Vercel quando o CLI estiver disponível e autorizado na máquina. Não faz deploy.
-- A rota de saúde é esperada em `/api/health`; login/chat devem permanecer indisponíveis (503) até a proteção durável ser configurada e testada.
+- A rota de saúde é esperada em `/api/health`. Os testes simulam Redis e rate limiter: não fazem chamadas reais à Upstash. Sem as duas variáveis Upstash, login/chat permanecem indisponíveis (503).

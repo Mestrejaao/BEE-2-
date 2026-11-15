@@ -87,10 +87,11 @@ function validateMessages(messages) {
   ) && messages[messages.length - 1].role === "user";
 }
 
-async function handleLogin(request, env, cors) {
-  const ip = trustedClientIp(request);
+async function handleLogin(request, env, cors, options = {}) {
+  const ip = options.clientIp ? options.clientIp(request) : trustedClientIp(request);
   if (!ip) return rateLimitUnavailable(cors);
-  const rate = await checkRateLimit(env.LOGIN_RATE_LIMITER, `login:${ip}`);
+  const limiter = options.loginRateLimiter ?? env.LOGIN_RATE_LIMITER;
+  const rate = await checkRateLimit(limiter, `login:${ip}`);
   if (rate === "limited") return rateLimitResponse(cors);
   if (rate === "unavailable") return rateLimitUnavailable(cors);
 
@@ -108,13 +109,14 @@ async function handleLogin(request, env, cors) {
   return json({ token, expiresIn: 43200 }, 200, cors);
 }
 
-async function handleChat(request, env, cors) {
+async function handleChat(request, env, cors, options = {}) {
   if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32 ||
       !(await verifySession(bearerToken(request), env.SESSION_SECRET))) {
     return json({ error: "Sessão inválida ou expirada. Entre novamente." }, 401, cors);
   }
 
-  const rate = await checkRateLimit(env.CHAT_RATE_LIMITER, "bee-user:chat");
+  const limiter = options.chatRateLimiter ?? env.CHAT_RATE_LIMITER;
+  const rate = await checkRateLimit(limiter, "bee-user:chat");
   if (rate === "limited") return rateLimitResponse(cors);
   if (rate === "unavailable") return rateLimitUnavailable(cors);
 
@@ -140,8 +142,7 @@ async function handleChat(request, env, cors) {
   return json({ error: "As IAs configuradas não conseguiram responder. Tente novamente em instantes." }, 502, cors);
 }
 
-export default {
-  async fetch(request, env) {
+export async function handleRequest(request, env = {}, options = {}) {
     const cors = corsHeaders(request, env);
     const origin = request.headers.get("Origin");
     if (origin && !allowedOrigins(env).includes(origin.replace(/\/$/, ""))) {
@@ -154,11 +155,16 @@ export default {
       return json({ status: "ok", service: "bee-api" }, 200, cors);
     }
     if (request.method === "POST" && url.pathname === "/api/auth/login") {
-      return handleLogin(request, env, cors);
+      return handleLogin(request, env, cors, options);
     }
     if (request.method === "POST" && url.pathname === "/api/chat") {
-      return handleChat(request, env, cors);
+      return handleChat(request, env, cors, options);
     }
     return json({ error: "Rota não encontrada." }, 404, cors);
+}
+
+export default {
+  async fetch(request, env) {
+    return handleRequest(request, env);
   }
 };

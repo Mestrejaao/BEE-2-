@@ -26,7 +26,7 @@ Requer Node.js 20+.
    ```
    Configure ao menos uma chave de provedor para conversar com a IA.
 3. Inicie o Worker: `npm run dev`.
-4. Em outro terminal, sirva a pasta `frontend` ou `docs` em `http://localhost:8787` (ou ajuste a porta/origem permitida em `ALLOWED_ORIGINS`). Para usar a API em outra origem, defina `window.BEE_API_BASE = "https://URL-DO-WORKER"` antes de carregar `app.js` no HTML.
+4. Sirva a pasta `frontend` ou `docs` em uma origem permitida. Para apontar a interface para uma API em outra origem, adicione antes de `app.js`: `<script>window.BEE_API_BASE = "https://URL-DO-WORKER";</script>`. Configure essa origem exata em `ALLOWED_ORIGINS` no Worker.
 5. Faça login usando o código definido em `BEE_ACCESS_CODE`.
 
 ## Configuração no Cloudflare
@@ -66,7 +66,7 @@ Novos provedores podem implementar o contrato dos adaptadores em `src/providers/
 - Chaves e código de acesso nunca são enviados ao navegador.
 - Login validado no Worker; token HMAC expira em 12 horas e fica em `sessionStorage`.
 - CORS permite apenas origens configuradas.
-- O endpoint de chat exige sessão e limita histórico, tamanho de mensagem e corpo.
+- O endpoint de chat exige sessão e limita histórico, tamanho de mensagem e corpo. Em produção, configure também uma regra de rate limiting no Cloudflare para `/api/auth/login`, pois o código de acesso compartilhado ainda não possui bloqueio persistente de tentativas.
 - O histórico de conversa fica no navegador; não há banco de dados nem persistência server-side nesta etapa.
 - O modo voz permanece como estava: interface preservada, integração de voz ainda não implementada.
 

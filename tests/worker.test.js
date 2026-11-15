@@ -6,7 +6,7 @@ const env = {
   BEE_ACCESS_CODE: "test-access-code",
   SESSION_SECRET: "a-test-session-secret-with-at-least-32-characters",
   OPENAI_API_KEY: "test-openai-key",
-  ALLOWED_ORIGINS: "https://bee.example",
+  ALLOWED_ORIGINS: "https://mestrejaao.github.io,https://bee.example",
   LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) },
   CHAT_RATE_LIMITER: { limit: async () => ({ success: true }) }
 };
@@ -138,4 +138,29 @@ test("rejects chat requests without a valid session", async () => {
     body: JSON.stringify({ messages: [{ role: "user", content: "Oi!" }] })
   }), env);
   assert.equal(response.status, 401);
+});
+
+
+test("allows the production GitHub Pages origin and returns CORS headers", async () => {
+  const response = await worker.fetch(new Request("https://bee.example/api/health", {
+    headers: { Origin: "https://mestrejaao.github.io" }
+  }), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "https://mestrejaao.github.io");
+  assert.equal(response.headers.get("Vary"), "Origin");
+});
+
+test("answers GitHub Pages preflight for authenticated JSON chat requests", async () => {
+  const response = await worker.fetch(new Request("https://bee.example/api/chat", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://mestrejaao.github.io",
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "content-type,authorization"
+    }
+  }), env);
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "https://mestrejaao.github.io");
+  assert.match(response.headers.get("Access-Control-Allow-Methods"), /POST/);
+  assert.match(response.headers.get("Access-Control-Allow-Headers"), /Authorization/i);
 });

@@ -26,7 +26,7 @@ Requer Node.js 20+.
    ```
    Configure ao menos uma chave de provedor para conversar com a IA.
 3. Inicie o Worker: `npm run dev`.
-4. Sirva a pasta `frontend` ou `docs` em uma origem permitida. Para apontar a interface para uma API em outra origem, adicione antes de `app.js`: `<script>window.BEE_API_BASE = "https://URL-DO-WORKER";</script>`. Configure essa origem exata em `ALLOWED_ORIGINS` no Worker.
+4. O Wrangler serve automaticamente a pasta `frontend/` junto com o Worker. Execute `npm run dev` e abra a URL local mostrada no terminal (normalmente `http://localhost:8787`). Para hospedar `docs/` separadamente, adicione antes de `app.js` em `docs/index.html`: `<script>window.BEE_API_BASE = "https://URL-DO-WORKER";</script>` e inclua a origem do site em `ALLOWED_ORIGINS`.
 5. Faça login usando o código definido em `BEE_ACCESS_CODE`.
 
 ## Configuração no Cloudflare
@@ -57,17 +57,19 @@ Ajuste opcionalmente `OPENAI_MODEL` e `ANTHROPIC_MODEL` como variáveis não sec
 
 O seletor envia prompts curtos e comuns primeiro para OpenAI; pedidos longos ou com sinais de análise/planejamento vão primeiro para Claude. Se o provedor preferido falhar, o backend tenta o outro quando uma chave estiver configurada. A regra é simples e isolada em `src/router/selector.js`, pronta para evoluir com métricas e políticas de custo.
 
-## Integração futura
+## Integração futura: Lovable
 
-Novos provedores podem implementar o contrato dos adaptadores em `src/providers/` e ser adicionados ao roteador. Lovable fica como integração futura via API/conector oficial compatível, não como um modelo de chat presumido; nenhum endpoint não documentado foi inventado.
+Lovable não é um provedor de inferência de texto equivalente a OpenAI/Claude. A Lovable oferece um servidor MCP oficial, mas atualmente a autenticação documentada é OAuth e os clientes suportados são específicos; não há uma API key genérica para o Worker usar como se fosse um endpoint de chat. Portanto, não foi inventado um endpoint privado nem adicionada uma integração que falharia em produção. A arquitetura deixa os adaptadores de IA separados para que uma integração MCP/OAuth seja feita quando houver um fluxo de autorização compatível com a BEE.
 
 ## Segurança e limites
 
 - Chaves e código de acesso nunca são enviados ao navegador.
 - Login validado no Worker; token HMAC expira em 12 horas e fica em `sessionStorage`.
 - CORS permite apenas origens configuradas.
-- O endpoint de chat exige sessão e limita histórico, tamanho de mensagem e corpo. Em produção, configure também uma regra de rate limiting no Cloudflare para `/api/auth/login`, pois o código de acesso compartilhado ainda não possui bloqueio persistente de tentativas.
+- O endpoint de chat exige sessão e limita histórico, tamanho de mensagem e corpo. Configure no painel Cloudflare uma regra de Rate Limiting para `POST /api/auth/login` (por exemplo, 5 tentativas por minuto por IP), pois a proteção anti-força-bruta é aplicada na borda, não em memória no Worker.
+- O Rate Limiting nativo do Workers é aproximado e regional; não o trate como limite global estrito.
 - O histórico de conversa fica no navegador; não há banco de dados nem persistência server-side nesta etapa.
+- O Worker serve a interface de `frontend/` e encaminha somente `/api/*` ao código do Worker. A pasta `docs/` é uma publicação alternativa estática e precisa apontar para a URL do Worker.
 - O modo voz permanece como estava: interface preservada, integração de voz ainda não implementada.
 
 ## Verificações

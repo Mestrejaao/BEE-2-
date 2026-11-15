@@ -61,12 +61,14 @@ function validateMessages(messages) {
 }
 
 async function handleLogin(request, env, cors) {
-  if (!env.BEE_ACCESS_CODE || !env.SESSION_SECRET) {
-    return json({ error: "Autenticação ainda não configurada no servidor." }, 503, cors);
+  if (!env.BEE_ACCESS_CODE || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
+    return json({ error: "Autenticação não configurada: defina BEE_ACCESS_CODE e SESSION_SECRET (mínimo de 32 caracteres)." }, 503, cors);
   }
   let body;
   try { body = await readJson(request); } catch { return json({ error: "Requisição inválida." }, 400, cors); }
-  if (typeof body.code !== "string" || !(await constantTimeEqual(body.code.trim(), env.BEE_ACCESS_CODE))) {
+  if (!body || typeof body !== "object" || Array.isArray(body) ||
+      typeof body.code !== "string" || body.code.length > 256 ||
+      !(await constantTimeEqual(body.code.trim(), env.BEE_ACCESS_CODE))) {
     return json({ error: "Código de identificação incorreto." }, 401, cors);
   }
   const token = await createSession(env.SESSION_SECRET);
@@ -74,7 +76,8 @@ async function handleLogin(request, env, cors) {
 }
 
 async function handleChat(request, env, cors) {
-  if (!env.SESSION_SECRET || !(await verifySession(bearerToken(request), env.SESSION_SECRET))) {
+  if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32 ||
+      !(await verifySession(bearerToken(request), env.SESSION_SECRET))) {
     return json({ error: "Sessão inválida ou expirada. Entre novamente." }, 401, cors);
   }
 
@@ -119,6 +122,7 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/chat") {
       return handleChat(request, env, cors);
     }
+    if (env.ASSETS) return env.ASSETS.fetch(request);
     return json({ error: "Rota não encontrada." }, 404, cors);
   }
 };

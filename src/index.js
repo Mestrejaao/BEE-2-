@@ -109,14 +109,14 @@ async function handleLogin(request, env, cors) {
 }
 
 async function handleChat(request, env, cors) {
-  const rate = await checkRateLimit(env.CHAT_RATE_LIMITER, "bee-user:chat");
-  if (rate === "limited") return rateLimitResponse(cors);
-  if (rate === "unavailable") return rateLimitUnavailable(cors);
-
   if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32 ||
       !(await verifySession(bearerToken(request), env.SESSION_SECRET))) {
     return json({ error: "Sessão inválida ou expirada. Entre novamente." }, 401, cors);
   }
+
+  const rate = await checkRateLimit(env.CHAT_RATE_LIMITER, "bee-user:chat");
+  if (rate === "limited") return rateLimitResponse(cors);
+  if (rate === "unavailable") return rateLimitUnavailable(cors);
 
   let body;
   try { body = await readJson(request); } catch { return json({ error: "Corpo da requisição inválido ou muito grande." }, 400, cors); }

@@ -411,7 +411,8 @@ button { -webkit-tap-highlight-color:transparent; }
 
 
 
-  <script>
+  <script src="./bee-config.js"></script>
+<script>
 
 (function () {
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -449,6 +450,7 @@ button { -webkit-tap-highlight-color:transparent; }
   var apiHistory = [];
 
   async function apiRequest(path, options) {
+    if (!API_BASE) throw new Error("Backend da BEE não configurado. Defina window.BEE_API_BASE em docs/bee-config.js.");
     options = options || {};
     var headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
     if (sessionToken) headers.Authorization = "Bearer " + sessionToken;

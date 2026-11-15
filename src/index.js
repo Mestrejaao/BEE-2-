@@ -159,7 +159,6 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/chat") {
       return handleChat(request, env, cors);
     }
-    if (env.ASSETS) return env.ASSETS.fetch(request);
     return json({ error: "Rota não encontrada." }, 404, cors);
   }
 };

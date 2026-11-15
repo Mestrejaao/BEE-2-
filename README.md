@@ -4,8 +4,9 @@ Assistente pessoal com frontend estático e API modular em Cloudflare Workers.
 
 ## Estrutura
 
-- `frontend/`: interface principal (texto e modo voz em preparação).
-- `docs/`: versão publicada/documentação da interface, preservando a tela de identificação.
+- `docs/index.html`: interface oficial publicada pelo GitHub Pages (fonte única da UI).
+- `docs/bee-config.js`: configuração pública centralizada do endereço da API Worker.
+- `frontend/index.html`: redirecionamento para a interface canônica em `docs/` (evita manter duas cópias da UI).
 - `src/index.js`: rotas HTTP, autenticação e orquestração.
 - `src/security/session.js`: sessões HMAC com validade de 12 horas.
 - `src/router/selector.js`: seleção automática de provedor e fallback.
@@ -25,8 +26,8 @@ Requer Node.js 20+.
    ANTHROPIC_API_KEY=""
    ```
    Configure ao menos uma chave de provedor para conversar com a IA.
-3. Inicie o Worker: `npm run dev`.
-4. O Wrangler serve automaticamente a pasta `frontend/` junto com o Worker. Execute `npm run dev` e abra a URL local mostrada no terminal (normalmente `http://localhost:8787`). Para hospedar `docs/` separadamente, adicione antes de `app.js` em `docs/index.html`: `<script>window.BEE_API_BASE = "https://URL-DO-WORKER";</script>` e inclua a origem do site em `ALLOWED_ORIGINS`.
+3. Inicie somente a API Worker local: `npm run dev` (normalmente `http://localhost:8787`). O Worker não hospeda a interface.
+4. Para testar a interface, abra `docs/index.html` por um servidor estático local e defina `window.BEE_API_BASE` em `docs/bee-config.js` para a URL da API local. Inclua a origem local em `ALLOWED_ORIGINS`.
 5. Faça login usando o código definido em `BEE_ACCESS_CODE`.
 
 ## Configuração no Cloudflare
@@ -47,7 +48,9 @@ npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put ANTHROPIC_API_KEY
 ```
 
-Defina `ALLOWED_ORIGINS` como variável não secreta com a origem exata do site que hospeda a interface, por exemplo `https://SEU-USUARIO.github.io`. Não inclua caminhos como `/BEE-2-/docs`. Para desenvolvimento, as origens localhost já estão configuradas no `wrangler.jsonc`.
+Defina `ALLOWED_ORIGINS` como variável não secreta com as origens exatas autorizadas. A produção já está configurada para `https://mestrejaao.github.io`; as origens `http://localhost:8787` e `http://127.0.0.1:8787` ficam disponíveis para desenvolvimento. Não inclua caminho de repositório, como `/BEE-2-/`.
+
+Depois de criar o Worker e conhecer seu endereço `*.workers.dev`, edite somente `docs/bee-config.js` e atribua a URL real a `window.BEE_API_BASE`, sem barra final. O arquivo é público: nunca coloque chaves de API nele. A interface do GitHub Pages é servida a partir de `docs/`; essa pasta contém a única cópia oficial do HTML. `frontend/index.html` apenas redireciona para ela.
 
 Ajuste opcionalmente `OPENAI_MODEL` e `ANTHROPIC_MODEL` como variáveis não secretas para selecionar modelos habilitados na sua conta.
 
@@ -72,7 +75,7 @@ Lovable não é um provedor de inferência de texto equivalente a OpenAI/Claude.
 - O limite de chat usa a identidade `bee-user:chat` validada pela sessão, agregando todas as sessões do código BEE atual. Para separar usuários no futuro, use um identificador estável e validado por usuário na chave.
 - **Limitação do Rate Limiting API:** os contadores são aproximados e independentes por localização Cloudflare; pode haver excesso temporário e não existe uma quota global estrita. Isso é adequado como proteção inicial de abuso. Se a BEE precisar de limite global estrito entre regiões, migre o contador para Durable Objects com uma instância por identidade.
 - O histórico de conversa fica no navegador; não há banco de dados nem persistência server-side nesta etapa.
-- O Worker serve a interface de `frontend/` e encaminha somente `/api/*` ao código do Worker. A pasta `docs/` é uma publicação alternativa estática e precisa apontar para a URL do Worker.
+- O Worker é exclusivamente backend: responde às rotas `/api/*` e não publica arquivos estáticos. O GitHub Pages publica a interface a partir de `docs/`; `docs/bee-config.js` é o único ponto para configurar o endereço da API.
 - O modo voz permanece como estava: interface preservada, integração de voz ainda não implementada.
 
 ## Rate limiting (Cloudflare Workers)

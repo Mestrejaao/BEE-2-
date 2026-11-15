@@ -10,7 +10,7 @@ Assistente pessoal com frontend estático e API modular em Cloudflare Workers.
 - `src/security/session.js`: sessões HMAC com validade de 12 horas.
 - `src/router/selector.js`: seleção automática de provedor e fallback.
 - `src/providers/`: adaptadores oficiais OpenAI Responses API e Anthropic Messages API.
-- `tests/`: testes unitários do seletor.
+- `tests/`: testes automatizados do seletor, sessões, rotas HTTP e rate limiting.
 
 ## Desenvolvimento local
 

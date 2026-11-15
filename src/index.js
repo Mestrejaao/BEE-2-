@@ -20,7 +20,9 @@ async function checkRateLimit(binding, key) {
   if (!binding || typeof binding.limit !== "function") return "unavailable";
   try {
     const result = await binding.limit({ key });
-    return result?.success === true ? "allowed" : "limited";
+    if (result?.success === true) return "allowed";
+    if (result?.success === false) return "limited";
+    return "unavailable";
   } catch (error) {
     console.error("BEE rate limiter failed:", error?.message || "unknown error");
     return "unavailable";
@@ -110,13 +112,17 @@ async function handleLogin(request, env, cors, options = {}) {
 }
 
 async function handleChat(request, env, cors, options = {}) {
+  const token = bearerToken(request);
   if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32 ||
-      !(await verifySession(bearerToken(request), env.SESSION_SECRET))) {
+      !(await verifySession(token, env.SESSION_SECRET))) {
     return json({ error: "Sessão inválida ou expirada. Entre novamente." }, 401, cors);
   }
 
   const limiter = options.chatRateLimiter ?? env.CHAT_RATE_LIMITER;
-  const rate = await checkRateLimit(limiter, "bee-user:chat");
+  // Preserve the existing Cloudflare key; Vercel supplies a SHA-256 session key.
+  const chatKey = options.chatIdentifier ? await options.chatIdentifier(token) : "bee-user:chat";
+  if (typeof chatKey !== "string" || !chatKey) return rateLimitUnavailable(cors);
+  const rate = await checkRateLimit(limiter, chatKey);
   if (rate === "limited") return rateLimitResponse(cors);
   if (rate === "unavailable") return rateLimitUnavailable(cors);
 

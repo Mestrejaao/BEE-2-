@@ -1,12 +1,29 @@
+import { isIP } from "node:net";
+import { createHash } from "node:crypto";
 import { handleRequest } from "../src/index.js";
+import { createUpstashRateLimiters } from "../src/security/upstash-rate-limit.js";
 
 /**
- * Vercel Node.js Function adapter.
- *
- * Protected routes deliberately fail closed until a durable, account-approved
- * rate limiter is configured. Never replace this with process-local counters.
+ * Vercel overwrites X-Forwarded-For with the public client IP. Accept only a
+ * single syntactically valid IP address; reject lists and arbitrary headers.
  */
-export function createVercelHandler(readEnv = () => process.env) {
+export function vercelClientIp(request) {
+  const value = request.headers.get("x-forwarded-for");
+  if (!value || value.includes(",")) return null;
+  const ip = value.trim();
+  return isIP(ip) ? ip : null;
+}
+
+export function sessionRateLimitKey(token) {
+  if (typeof token !== "string" || !token) return null;
+  return "session:" + createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+/**
+ * Vercel Node.js Function adapter. Redis credentials are read only from the
+ * server environment and are never returned to the browser.
+ */
+export function createVercelHandler(readEnv = () => process.env, buildLimiters = createUpstashRateLimiters) {
   return {
     async fetch(request) {
       const source = readEnv();
@@ -21,10 +38,19 @@ export function createVercelHandler(readEnv = () => process.env) {
           "https://mestrejaao.github.io,http://localhost:8787,http://127.0.0.1:8787"
       };
 
-      // No in-memory or unverified limiter is substituted here. The shared
-      // handler returns HTTP 503 for login/chat while the durable protection
-      // is not available; /api/health remains usable.
-      return handleRequest(request, env);
+      let limiters;
+      try {
+        limiters = buildLimiters(source);
+      } catch {
+        limiters = null;
+      }
+
+      return handleRequest(request, env, {
+        clientIp: vercelClientIp,
+        loginRateLimiter: limiters?.loginRateLimiter,
+        chatRateLimiter: limiters?.chatRateLimiter,
+        chatIdentifier: sessionRateLimitKey
+      });
     }
   };
 }

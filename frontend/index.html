@@ -1,80 +1,727 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#090b10">
-  <title>BEE</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <section id="login-view" class="login-view">
-    <div class="login-box">
-      <div class="logo">B</div>
-      <h1>Identificação BEE</h1>
-      <p>Digite seu código de identificação para continuar.</p>
-      <form id="login-form">
-        <input id="access-code" type="password" placeholder="Código de identificação" autocomplete="off">
-        <button type="submit">Entrar</button>
-        <p id="login-error" role="alert"></p>
-      </form>
+<!doctype html><html lang="pt-BR"><head><title>BEE</title><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">  <style>
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+
+
+/* Layout: one-screen app. Brand header, segmented tabs (Texto / Voz). In Texto, a function workspace opens above the composer when a command is sent. */
+:root {
+  --bg: #F6F5EF;
+  --surface: #FFFFFF;
+  --fg: #17150E;
+  --muted: #6B6757;
+  --line: #E3E0D3;
+  --accent: #FDBE0F;
+  --accent-ink: #17150E;
+  --user-bg: #17150E;
+  --user-fg: #FFFFFF;
+  --code-bg: #17150E;
+  --code-fg: #F6E7B0;
+  --code-muted: #8A8466;
+  --stage-bg: #090C12;
+  --stage-fg: #EAF6FF;
+  --stage-muted: #8FA6B8;
+  --sky: #8FDBFF;
+  --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #100F0A; --surface: #1B1A13; --fg: #F4F1E4; --muted: #A29D88; --line: #2E2C20;
+    --user-bg: #FDBE0F; --user-fg: #17150E; --code-bg: #0A0A06; --code-fg: #F6E7B0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #100F0A; --surface: #1B1A13; --fg: #F4F1E4; --muted: #A29D88; --line: #2E2C20;
+  --user-bg: #FDBE0F; --user-fg: #17150E; --code-bg: #0A0A06; --code-fg: #F6E7B0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
+.app {
+  height: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-block: 12px;
+}
+
+/* Header */
+.top { display: flex; align-items: center; gap: 12px; }
+.logo { width: 46px; height: 46px; border-radius: 13px; display: block; flex: none; }
+.top h1 { margin: 0; font: 800 26px/1 var(--display); letter-spacing: 0.02em; }
+.top p { margin: 3px 0 0; font: 500 11px/1 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Tabs */
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.tab { border: 0; background: transparent; padding: 10px 12px; border-radius: 10px; font-weight: 600; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.tab svg { width: 18px; height: 18px; }
+
+/* Panels */
+.panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.panel[hidden] { display: none; }
+
+/* Chat */
+.msgs { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 12px 8px 6px; }
+.panel.has-work .msgs { flex: 1 1 30%; }
+.note { align-self: center; font: 500 11px/1.3 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; text-align: center; }
+.msg { max-width: min(86%, 560px); position: relative; min-width: 0; }
+.msg .bubble { padding: 11px 14px; border-radius: 18px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.msg.user { align-self: flex-end; }
+.msg.user .bubble { background: var(--user-bg); color: var(--user-fg); border-bottom-right-radius: 6px; }
+.msg.bee { align-self: flex-start; }
+/* Balão da BEE: moldura HUD dourada em fundo claro */
+.msg.bee { filter: drop-shadow(0 2px 3px rgba(201, 143, 0, 0.3)); }
+.msg.bee .bubble {
+  position: relative; isolation: isolate; min-width: 200px;
+  padding: 34px 18px 14px; color: #17150E; border: 0; border-radius: 0;
+  background: linear-gradient(135deg, #8E6A00 0%, #FFE27A 28%, #D9A400 55%, #FFF1B0 80%, #C98F00 100%);
+  clip-path: polygon(0 26px,14px 12px,calc(100% - 162px) 12px,calc(100% - 150px) 0,calc(100% - 40px) 0,calc(100% - 28px) 12px,100% 12px,100% calc(100% - 24px),calc(100% - 7px) calc(100% - 24px),calc(100% - 7px) calc(100% - 10px),100% calc(100% - 10px),100% 100%,0 100%);
+}
+.msg.bee .bubble::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background:
+    linear-gradient(90deg, #D9A400, #FFE27A, #D9A400) calc(100% - 44px) 4px / 104px 4px no-repeat,
+    linear-gradient(180deg, #FFFEF6 0%, #FFF6D2 100%);
+  clip-path: polygon(2px 26.83px,14.83px 14px,calc(100% - 161.2px) 14px,calc(100% - 149.2px) 2px,calc(100% - 40.8px) 2px,calc(100% - 28.8px) 14px,calc(100% - 2px) 14px,calc(100% - 2px) calc(100% - 26px),calc(100% - 9px) calc(100% - 26px),calc(100% - 9px) calc(100% - 8px),calc(100% - 2px) calc(100% - 8px),calc(100% - 2px) calc(100% - 2px),2px calc(100% - 2px));
+}
+.msg.bee .bubble::after {
+  content: ""; position: absolute; left: 18px; right: 18px; top: 19px; height: 14px; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 33%22%3E %3Cg fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E %3Cpath d=%22M3 10H15.3L20 5.2H54L63.5 14.1%22 stroke=%22%23C98F00%22 stroke-width=%221.3%22/%3E %3Cpath d=%22M3 23.5H15.3L20 28.7H54L62.4 21.2%22 stroke=%22%23C98F00%22 stroke-width=%221.3%22/%3E %3Cpath d=%22M31.8 10H77.6L84.7 1.2H121.2L150 30%22 stroke=%22%23D9A400%22 stroke-width=%22.6%22/%3E %3Cpath d=%22M9.4 17.2H28.2L37.6 25.4H77.6L83.5 31.8H101L107 27.8%22 stroke=%22%23D9A400%22 stroke-width=%22.6%22/%3E %3Cpath d=%22M63.5 14.1H134L150 23%22 stroke=%22%23E8A900%22 stroke-width=%221.5%22/%3E %3Cpath d=%22M63.5 21.2H122%22 stroke=%22%23E8A900%22 stroke-width=%221.5%22/%3E %3Cpath d=%22M66 21.2L70 14.1M72 21.2L76 14.1M78 21.2L82 14.1M84 21.2L88 14.1M90 21.2L94 14.1M96 21.2L100 14.1M102 21.2L106 14.1%22 stroke=%22%23E8A900%22 stroke-width=%221%22/%3E %3C/g%3E %3Cpath d=%22M84.7 9.4L89.4 4.7H120L123.5 9.4Z%22 fill=%22%23E8A900%22/%3E %3Cg fill=%22%23C98F00%22%3E%3Ccircle cx=%223%22 cy=%2210%22 r=%221.6%22/%3E%3Ccircle cx=%223%22 cy=%2223.5%22 r=%221.6%22/%3E%3Ccircle cx=%22122%22 cy=%2221.2%22 r=%221.7%22/%3E%3C/g%3E %3Cg fill=%22%23D9A400%22%3E%3Ccircle cx=%2231.8%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%229.4%22 cy=%2217.2%22 r=%221%22/%3E%3Ccircle cx=%22107%22 cy=%2227.8%22 r=%221%22/%3E%3C/g%3E %3Cg transform=%22translate%28300 0%29 scale%28-1 1%29%22%3E %3Cg fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E %3Cpath d=%22M3 10H15.3L20 5.2H54L63.5 14.1%22 stroke=%22%23C98F00%22 stroke-width=%221.3%22/%3E %3Cpath d=%22M3 23.5H15.3L20 28.7H54L62.4 21.2%22 stroke=%22%23C98F00%22 stroke-width=%221.3%22/%3E %3Cpath d=%22M31.8 10H77.6L84.7 1.2H121.2L150 30%22 stroke=%22%23D9A400%22 stroke-width=%22.6%22/%3E %3Cpath d=%22M9.4 17.2H28.2L37.6 25.4H77.6L83.5 31.8H101L107 27.8%22 stroke=%22%23D9A400%22 stroke-width=%22.6%22/%3E %3Cpath d=%22M63.5 14.1H134L150 23%22 stroke=%22%23E8A900%22 stroke-width=%221.5%22/%3E %3Cpath d=%22M63.5 21.2H122%22 stroke=%22%23E8A900%22 stroke-width=%221.5%22/%3E %3Cpath d=%22M66 21.2L70 14.1M72 21.2L76 14.1M78 21.2L82 14.1M84 21.2L88 14.1M90 21.2L94 14.1M96 21.2L100 14.1M102 21.2L106 14.1%22 stroke=%22%23E8A900%22 stroke-width=%221%22/%3E %3C/g%3E %3Cpath d=%22M84.7 9.4L89.4 4.7H120L123.5 9.4Z%22 fill=%22%23E8A900%22/%3E %3Cg fill=%22%23C98F00%22%3E%3Ccircle cx=%223%22 cy=%2210%22 r=%221.6%22/%3E%3Ccircle cx=%223%22 cy=%2223.5%22 r=%221.6%22/%3E%3Ccircle cx=%22122%22 cy=%2221.2%22 r=%221.7%22/%3E%3C/g%3E %3Cg fill=%22%23D9A400%22%3E%3Ccircle cx=%2231.8%22 cy=%2210%22 r=%221%22/%3E%3Ccircle cx=%229.4%22 cy=%2217.2%22 r=%221%22/%3E%3Ccircle cx=%22107%22 cy=%2227.8%22 r=%221%22/%3E%3C/g%3E %3C/g%3E%3C/svg%3E") center / contain no-repeat;
+}
+.msg.bee .bubble .typing i { background: #8E6A00; }
+/* Yellow dot at the top-left corner of every BEE message */
+.msg.bee::before { content: ""; position: absolute; top: -6px; left: -6px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--bg); z-index: 1; }
+.typing { display: inline-flex; gap: 5px; padding: 4px 0; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1s ease-in-out infinite; }
+.typing i:nth-child(2) { animation-delay: 0.15s; }
+.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } }
+
+/* Function workspace (opens on command) */
+.work { flex: 1 1 62%; min-height: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.work[hidden] { display: none; }
+.work-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); }
+.work-head strong { font: 700 15px/1 var(--display); }
+.work-head span { flex: 1; min-width: 0; font: 500 11px/1.2 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xbtn { width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.xbtn:hover { background: var(--bg); color: var(--fg); }
+.xbtn svg { width: 18px; height: 18px; }
+.work-body { flex: 1; min-height: 0; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.btn { border: 0; border-radius: 999px; padding: 8px 14px; background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: 13px; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--code-fg); border: 1px solid var(--code-muted); padding: 4px 10px; font-size: 12px; }
+.hint { margin: 0; font: 500 11px/1.4 var(--mono); color: var(--muted); }
+
+.code { background: var(--code-bg); color: var(--code-fg); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.codebar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 8px 14px; border-bottom: 1px solid #2a2820; font: 500 12px/1 var(--mono); color: var(--code-muted); }
+.codeview { margin: 0; padding: 10px 14px; font: 500 13px/1.6 var(--mono); overflow: auto; counter-reset: ln; white-space: pre; }
+.codeview .ln { display: block; min-height: 1.6em; counter-increment: ln; }
+.codeview .ln::before { content: counter(ln); display: inline-block; width: 2ch; margin-right: 14px; text-align: right; color: var(--code-muted); }
+
+.edit label { display: block; margin-bottom: 4px; font: 500 11px/1 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.edit textarea { width: 100%; resize: vertical; min-height: 84px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.edrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+.tag { font: 500 12px/1.2 var(--mono); color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.edout { padding: 10px 12px; border-left: 4px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 4px 12px 12px 4px; min-height: 48px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.edit .hint { margin-top: 10px; }
+
+.screen { position: relative; aspect-ratio: 16 / 9; max-height: 100%; border-radius: 14px; overflow: hidden; background: var(--stage-bg); display: flex; align-items: flex-end; justify-content: center; gap: 5px; padding: 0 18% 14% ; box-shadow: inset 0 0 60px rgba(143, 219, 255, 0.18); }
+.screen .eq { display: flex; align-items: flex-end; gap: 5px; width: 100%; height: 62%; }
+.screen .eq i { flex: 1; min-width: 0; border-radius: 4px 4px 0 0; background: linear-gradient(#FFE27A, #FDBE0F); animation: eq var(--d, 1s) ease-in-out infinite; animation-delay: var(--l, 0s); }
+.player.paused .eq i { animation-play-state: paused; }
+@keyframes eq { 0%, 100% { height: 14%; } 50% { height: 100%; } }
+.livepill { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #fff; font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.livepill i { width: 8px; height: 8px; border-radius: 50%; background: #E5484D; animation: pulse 1.2s ease-in-out infinite; }
+.player.paused .livepill i { animation: none; background: var(--stage-muted); }
+.pbar { display: flex; align-items: center; gap: 10px; }
+.pbar button { width: 38px; height: 38px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; }
+.pbar button svg { width: 18px; height: 18px; }
+.pbar .pt { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pbar .tm { font: 500 12px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Composer */
+.composer { display: flex; gap: 8px; align-items: center; padding: 6px 6px 6px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+.composer input { flex: 1; min-width: 0; border: 0; background: transparent; padding: 10px 0; outline: none; }
+.composer:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.composer input::placeholder { color: var(--muted); }
+.send { width: 44px; height: 44px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; }
+.send:disabled { opacity: 0.5; cursor: default; }
+.send svg { width: 20px; height: 20px; }
+
+/* Voice */
+.stage { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; background: var(--stage-bg); color: var(--stage-fg); }
+.stage canvas { flex: 1 1 0; min-height: 0; width: 100%; height: 0; display: block; }
+.caption { flex: none; padding: 8px 18px 18px; text-align: center; }
+.caption strong { display: block; font: 700 18px/1.2 var(--display); }
+.caption span { display: block; margin-top: 6px; font: 500 12px/1.4 var(--mono); color: var(--stage-muted); letter-spacing: 0.04em; min-height: 1.4em; }
+.voicebar { display: flex; justify-content: center; padding-bottom: 4px; }
+.mic { position: relative; width: 68px; height: 68px; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; }
+.mic svg { width: 28px; height: 28px; }
+.mic[aria-pressed="true"]::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--sky); animation: ring 1.6s ease-out infinite; }
+@keyframes ring { from { transform: scale(0.9); opacity: 0.9; } to { transform: scale(1.3); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .livepill i, .typing i, .mic[aria-pressed="true"]::after, .screen .eq i { animation: none; }
+  .screen .eq i { height: 55%; }
+}
+
+</style>
+</head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+
+
+<div class="app">
+  <header class="top">
+    <img class="logo" alt="BEE" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAgQDAwMEBAQFBgoGBgUFBgwICQcKDgwPDg4MDQ0PERYTDxAVEQ0NExoTFRcYGRkZDxIbHRsYHRYYGRj/2wBDAQQEBAYFBgsGBgsYEA0QGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBj/wAARCAEAAQADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3qiiiv47P1wKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAC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">
+    <div>
+      <h1>BEE</h1>
+      <p id="subLabel">Assistente</p>
+    </div>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Modo de conversa">
+    <button class="tab" role="tab" id="tab-texto" aria-controls="panel-texto" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
+      Texto
+    </button>
+    <button class="tab" role="tab" id="tab-voz" aria-controls="panel-voz" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      Voz
+    </button>
+  </div>
+
+  <section class="panel" id="panel-texto" role="tabpanel" aria-labelledby="tab-texto">
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+
+    <section class="work" id="work" hidden aria-label="Função aberta">
+      <div class="work-head">
+        <strong id="workTitle"></strong>
+        <span id="workSub"></span>
+        <button class="xbtn" id="workClose" type="button" aria-label="Fechar função">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="work-body" id="workBody"></div>
+    </section>
+
+    <form class="composer" id="form" autocomplete="off">
+      <input id="msg" type="text" enterkeyhint="send" aria-label="Mensagem para a BEE" placeholder="Ex.: Programe um site de receitas">
+      <button class="send" id="send" type="submit" aria-label="Enviar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <section class="panel" id="panel-voz" role="tabpanel" aria-labelledby="tab-voz" hidden>
+    <div class="stage">
+      <canvas id="orb" aria-hidden="true"></canvas>
+      <div class="caption" aria-live="polite">
+        <strong id="capTitle">Toque para conversar com a BEE</strong>
+        <span id="capSub">Demonstração visual da voz</span>
+      </div>
+    </div>
+    <div class="voicebar">
+      <button class="mic" id="mic" type="button" aria-pressed="false" aria-label="Iniciar conversa por voz">
+        <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
     </div>
   </section>
-  <main class="app hidden" id="app-view">
+</div>
 
-    <header class="header">
-      <div class="logo">B</div>
-      <div>
-        <h1>BEE</h1>
-        <p>Seu assistente pessoal de IA</p>
-      </div>
-    </header>
 
-    <nav class="mode-selector">
-      <button type="button" id="mode-text" class="active">
-        Texto
-      </button>
 
-      <button type="button" id="mode-voice">
-        Voz
-      </button>
-    </nav>
+  <script>
 
-    <section id="text-view" class="view">
-      <section class="welcome">
-        <h2>Olá! Eu sou a BEE.</h2>
-        <p>Como posso ajudar você hoje?</p>
-      </section>
+(function () {
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-      <section class="chat" id="chat">
-        <div class="message assistant">
-          Olá! Sou a BEE. Estou sendo preparada para conversar com você.
-        </div>
-      </section>
+  /* ---------- Tabs ---------- */
+  var tabs = { texto: document.getElementById("tab-texto"), voz: document.getElementById("tab-voz") };
+  var panels = { texto: document.getElementById("panel-texto"), voz: document.getElementById("panel-voz") };
+  var current = "texto";
+  function showTab(name) {
+    if (!tabs[name]) name = "texto";
+    current = name;
+    Object.keys(tabs).forEach(function (k) {
+      tabs[k].setAttribute("aria-selected", k === name ? "true" : "false");
+      panels[k].hidden = k !== name;
+    });
+    if (name === "voz") { fit(); startLoop(); } else { stopLoop(); if (session) endSession(); }
+  }
+  Object.keys(tabs).forEach(function (k) {
+    tabs[k].addEventListener("click", function () {
+      showTab(k);
+      try { history.replaceState(null, "", "#" + k); } catch (e) { location.hash = k; }
+    });
+  });
+  window.addEventListener("hashchange", function () { showTab(location.hash.replace("#", "")); });
 
-      <form id="chat-form">
-        <input
-          id="message-input"
-          type="text"
-          placeholder="Digite uma mensagem..."
-          autocomplete="off"
-        >
-        <button type="submit">Enviar</button>
-      </form>
-    </section>
+  /* ---------- Chat helpers ---------- */
+  var msgs = document.getElementById("msgs");
+  var form = document.getElementById("form");
+  var input = document.getElementById("msg");
+  var sendBtn = document.getElementById("send");
+  var subLabel = document.getElementById("subLabel");
+  var busy = false;
+  var API_BASE = (window.BEE_API_BASE || "").replace(/\\/$/, "");
+  var sessionToken = sessionStorage.getItem("bee-session") || "";
+  var apiHistory = [];
 
-    <section id="voice-view" class="view hidden">
-      <div class="voice-container">
-        <div class="orb" id="voice-orb"></div>
-        <h2>Modo Voz</h2>
-        <p>A conversa por voz está sendo preparada.</p>
-      </div>
-    </section>
+  async function apiRequest(path, options) {
+    options = options || {};
+    var headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+    if (sessionToken) headers.Authorization = "Bearer " + sessionToken;
+    var response = await fetch(API_BASE + "/api" + path, Object.assign({}, options, { headers: headers }));
+    var data = await response.json().catch(function () { return {}; });
+    if (!response.ok) throw new Error(data.error || "Não foi possível concluir a solicitação.");
+    return data;
+  }
 
-    <footer>BEE · Seu assistente pessoal</footer>
+  async function ensureSession() {
+    if (sessionToken) return true;
+    var code = window.prompt("Digite seu código de identificação da BEE:");
+    if (!code) return false;
+    var result = await apiRequest("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ code: code.trim() })
+    });
+    sessionToken = result.token;
+    sessionStorage.setItem("bee-session", sessionToken);
+    return true;
+  }
 
-  </main>
+  async function askAI(text) {
+    if (!(await ensureSession())) return "Para conversar com a BEE, informe seu código de identificação.";
+    apiHistory.push({ role: "user", content: text });
+    apiHistory = apiHistory.slice(-12);
+    var request = function () {
+      return apiRequest("/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages: apiHistory })
+      });
+    };
+    try {
+      var result = await request();
+      apiHistory.push({ role: "assistant", content: result.answer });
+      apiHistory = apiHistory.slice(-12);
+      return result.answer;
+    } catch (error) {
+      if (error.message.indexOf("Sessão inválida") !== -1) {
+        sessionStorage.removeItem("bee-session");
+        sessionToken = "";
+        if (await ensureSession()) {
+          var retry = await request();
+          apiHistory.push({ role: "assistant", content: retry.answer });
+          apiHistory = apiHistory.slice(-12);
+          return retry.answer;
+        }
+      }
+      throw error;
+    }
+  }
 
-  <script src="app.js"></script>
-</body>
-</html>
+  function scroll() { msgs.scrollTop = msgs.scrollHeight; }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text) n.textContent = text;
+    return n;
+  }
+  function addUser(text) {
+    var m = el("div", "msg user");
+    m.appendChild(el("div", "bubble", text));
+    msgs.appendChild(m); scroll();
+  }
+  function addBee(text) {
+    var m = el("div", "msg bee");
+    var b = el("div", "bubble", text || "");
+    m.appendChild(b); msgs.appendChild(m); scroll();
+    return { wrap: m, bubble: b };
+  }
+  async function typeInto(node, str, ms) {
+    for (var i = 0; i < str.length; i += 2) {
+      node.textContent += str.slice(i, i + 2);
+      scroll();
+      await sleep(ms);
+    }
+  }
+  function tidy(t) {
+    t = t.replace(/\s+/g, " ").trim();
+    if (!t) return "";
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    return /[.!?…]$/.test(t) ? t : t + ".";
+  }
+  function cap(t) { return t ? t.charAt(0).toUpperCase() + t.slice(1) : t; }
+  function camel(t) {
+    var w = t.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9\s]/g, " ").trim().split(/\s+/).slice(0, 3);
+    var s = w.map(function (x) { return cap(x.toLowerCase()); }).join("");
+    return s || "App";
+  }
+  function clean(t) { return t.replace(/["'`<>\\]/g, ""); }
+
+  /* ---------- Function workspace ---------- */
+  var work = document.getElementById("work");
+  var workBody = document.getElementById("workBody");
+  var workTitle = document.getElementById("workTitle");
+  var workSub = document.getElementById("workSub");
+  var cleanup = null;
+
+  function closeWork() {
+    if (cleanup) { cleanup(); cleanup = null; }
+    work.hidden = true;
+    workBody.innerHTML = "";
+    panels.texto.classList.remove("has-work");
+    subLabel.textContent = "Assistente";
+  }
+  function openWork(title, sub) {
+    if (cleanup) { cleanup(); cleanup = null; }
+    workTitle.textContent = title;
+    workSub.textContent = sub;
+    workBody.innerHTML = "";
+    work.hidden = false;
+    panels.texto.classList.add("has-work");
+    subLabel.textContent = title;
+  }
+  document.getElementById("workClose").addEventListener("click", closeWork);
+
+  async function openCode(arg) {
+    var subject = clean(arg) || "aplicativo";
+    var name = camel(subject);
+    openWork("Programação", "app.js");
+    workBody.innerHTML =
+      '<div class="code"><div class="codebar"><span>app.js</span><button type="button" class="btn ghost" id="copyBtn">Copiar</button></div><pre class="codeview" id="codeView"></pre></div>' +
+      '<p class="hint">Código de exemplo gerado na demonstração.</p>';
+    var view = document.getElementById("codeView");
+    var code = "// BEE · " + subject + "\nfunction criar" + name + "() {\n  const app = document.createElement(\"main\");\n  app.innerHTML = \"<h1>" + subject + "</h1>\";\n  document.body.appendChild(app);\n  return app;\n}\n\ncriar" + name + "();";
+    var copy = document.getElementById("copyBtn");
+    copy.addEventListener("click", function () {
+      function ok() { copy.textContent = "Copiado"; setTimeout(function () { copy.textContent = "Copiar"; }, 1600); }
+      try { navigator.clipboard.writeText(code).then(ok, function () { copy.textContent = "Selecione o código"; }); }
+      catch (e) { copy.textContent = "Selecione o código"; }
+    });
+    var token = {};
+    cleanup = function () { token.stop = true; };
+    var lines = code.split("\n");
+    for (var i = 0; i < lines.length && !token.stop; i++) {
+      var ln = el("span", "ln");
+      view.appendChild(ln);
+      var line = lines[i];
+      for (var j = 0; j < line.length && !token.stop; j += 3) {
+        ln.textContent += line.slice(j, j + 3);
+        await sleep(reduce ? 1 : 10);
+      }
+      view.scrollTop = view.scrollHeight;
+    }
+  }
+
+  function openEdit(style, text) {
+    openWork("Edição", style ? "de maneira " + style : "estilo livre");
+    workBody.innerHTML =
+      '<div class="edit">' +
+      '<label for="edIn">Texto original</label><textarea id="edIn" rows="4"></textarea>' +
+      '<div class="edrow"><span class="tag" id="edStyle"></span><button class="btn" id="edGo" type="button">Aplicar edição</button></div>' +
+      '<label>Resultado</label><div class="edout" id="edOut"></div>' +
+      '<p class="hint">Edição de demonstração: ajusta espaços e pontuação.</p></div>';
+    var edIn = document.getElementById("edIn"), edOut = document.getElementById("edOut");
+    document.getElementById("edStyle").textContent = "Estilo: " + (clean(style) || "livre");
+    function run() { edOut.textContent = tidy(edIn.value) || "Cole um texto e toque em Aplicar edição."; }
+    document.getElementById("edGo").addEventListener("click", run);
+    edIn.value = text;
+    run();
+    if (!text) { try { edIn.focus(); } catch (e) {} }
+  }
+
+  function openWatch(arg) {
+    var title = cap(clean(arg)) || "Transmissão ao vivo";
+    openWork("Assistir", title);
+    var bars = "";
+    for (var i = 0; i < 14; i++) {
+      bars += '<i style="--d:' + (0.7 + ((i * 37) % 9) / 10).toFixed(1) + 's;--l:-' + ((i * 13) % 10) / 10 + 's"></i>';
+    }
+    workBody.innerHTML =
+      '<div class="player" id="player">' +
+      '<div class="screen"><span class="livepill"><i></i>Ao vivo</span><div class="eq">' + bars + '</div></div>' +
+      '<div class="pbar" style="margin-top:10px"><button type="button" id="pp" aria-label="Pausar"></button><span class="pt" id="pt"></span><span class="tm" id="tm">00:00</span></div>' +
+      '<p class="hint" style="margin-top:10px">Player de demonstração: nenhuma transmissão real conectada.</p></div>';
+    document.getElementById("pt").textContent = title;
+    var player = document.getElementById("player"), pp = document.getElementById("pp"), tm = document.getElementById("tm");
+    var PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>';
+    var PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10-6.5a1 1 0 0 0 0-1.8l-10-6.5A1 1 0 0 0 8 5.5z"/></svg>';
+    var playing = true, secs = 0;
+    pp.innerHTML = PAUSE;
+    pp.addEventListener("click", function () {
+      playing = !playing;
+      player.classList.toggle("paused", !playing);
+      pp.innerHTML = playing ? PAUSE : PLAY;
+      pp.setAttribute("aria-label", playing ? "Pausar" : "Reproduzir");
+    });
+    var iv = setInterval(function () {
+      if (!playing) return;
+      secs++;
+      tm.textContent = String(Math.floor(secs / 60)).padStart(2, "0") + ":" + String(secs % 60).padStart(2, "0");
+    }, 1000);
+    cleanup = function () { clearInterval(iv); };
+  }
+
+  /* ---------- Commands ---------- */
+  // Lowercase and strip accents without changing the string length, so indexes still match the original text.
+  function fold(t) {
+    return Array.from(t).map(function (c) {
+      var b = c.normalize("NFD").replace(/[̀-ͯ]/g, "");
+      return b.length === 1 ? b.toLowerCase() : c.toLowerCase();
+    }).join("");
+  }
+  var FILLER = /^(?:oi|ola|ei|e ai|bee|por favor|pf|pode|poderia|consegue|voce|quero que|gostaria que|preciso que|vamos|bora|me)\b[\s,!.]*/;
+  var ART = "(?:(?:um|uma|uns|umas|o|a|os|as)\\s+)?";
+
+  function parseCommand(raw) {
+    var n = fold(raw), skip = 0, m, guard = 0;
+    while (guard++ < 6 && (m = FILLER.exec(n.slice(skip))) && m[0].length) skip += m[0].length;
+    var s = n.slice(skip), o = raw.slice(skip);
+    function rest(mm) { return o.slice(s.length - mm[1].length).replace(/[\s,]*por favor\W*$/i, "").trim(); }
+    function re(src) { return new RegExp(src); }
+
+    // Programação: "programe um…", "crie um site…", "quero programar…", "me ajuda a programar…"
+    var VA = "(?:programe|programa|programar|codifique|codificar|codar|desenvolva|desenvolver)";
+    var VB = "(?:crie|criar|faca|fazer|escreva|escrever|monte|montar|gere|gerar|construa|construir)";
+    var NOUN = "(?:programa|codigo|script|app|aplicativo|site|pagina|funcao|bot|jogo|api|sistema)";
+    if ((m = re("^" + VA + "\\b\\s*(?:para mim\\s+)?" + ART + "([\\s\\S]*)$").exec(s))) return { type: "code", arg: rest(m) };
+    if ((m = re("^" + VB + "\\s+(?:para mim\\s+)?" + ART + "(" + NOUN + "\\b[\\s\\S]*)$").exec(s))) return { type: "code", arg: rest(m) };
+    if ((m = re("^(?:quero|queria|gostaria de|vou|preciso)\\s+(?:de\\s+)?(?:programar|codar|desenvolver)\\b\\s*" + ART + "([\\s\\S]*)$").exec(s))) return { type: "code", arg: rest(m) };
+    if ((m = re("^ajud(?:a|ar|e)\\s+(?:a|com)\\s+(?:programar|codar)\\b\\s*" + ART + "([\\s\\S]*)$").exec(s))) return { type: "code", arg: rest(m) };
+
+    // Edição: "edite de maneira…", "revise este texto…", "reescreva em tom…", "melhore o texto…"
+    var EV = "(?:edite|edita|editar|revise|revisa|revisar|reescreva|reescrever|corrija|corrigir|melhore|melhorar|ajuste|ajustar|adapte|adaptar)";
+    m = re("^" + EV + "\\b\\s*(?:(?:o|a|esse|essa|este|esta|meu|minha|um|uma)\\s+)*(?:(?:texto|frase|trecho|mensagem)\\b\\s*)?(?:(?:de|em|com|no|na|num|numa|para)\\s+)?(?:(?:maneira|forma|modo|jeito|tom|estilo|linguagem)\\s+)?([^:]*)(?::\\s*([\\s\\S]*))?$").exec(s);
+    if (m) {
+      var colon = s.indexOf(":"), style, text = "";
+      if (m[2] !== undefined && colon >= 0) {
+        style = o.slice(colon - m[1].length, colon);
+        text = o.slice(colon + 1).trim();
+      } else {
+        style = o.slice(s.length - m[1].length);
+      }
+      return { type: "edit", style: style.replace(/[\s,.]+$/, "").trim(), text: text };
+    }
+
+    // Streaming: "quero assistir…", "quero ver…", "assista…", "abra a transmissão…", "streaming de…"
+    var WV = "(?:assistir|assista|assiste|acompanhar|acompanhe|ver|veja|curtir)";
+    if ((m = re("^(?:quero|queria|gostaria de|vou|posso|deixa eu|deixe eu)\\s+(?:eu\\s+)?(?:poder\\s+)?" + WV + "\\b\\s*([\\s\\S]*)$").exec(s))) return { type: "watch", arg: rest(m) };
+    if ((m = re("^(?:assistir|assista|assiste|acompanhe|acompanhar)\\b\\s*([\\s\\S]*)$").exec(s))) return { type: "watch", arg: rest(m) };
+    if ((m = re("^(?:abra|abrir|abre|coloque|colocar|coloca|ponha|exiba|transmita|transmitir|inicie|iniciar)\\s+(?:(?:a|o|um|uma|uns)\\s+)?(?:transmissao|stream|streaming|live|video|canal|player|ao vivo)\\b\\s*(?:(?:de|do|da|dos|das|sobre)\\s+)?([\\s\\S]*)$").exec(s))) return { type: "watch", arg: rest(m) };
+    if ((m = re("^(?:streaming|live|ao vivo)\\b\\s*(?:(?:de|do|da)\\s+)?([\\s\\S]*)$").exec(s))) return { type: "watch", arg: rest(m) };
+    return null;
+  }
+
+  async function reply(userText) {
+    var typing = addBee("");
+    var dots = el("span", "typing");
+    dots.innerHTML = "<i></i><i></i><i></i>";
+    typing.bubble.appendChild(dots);
+    await sleep(600);
+    typing.wrap.remove();
+
+    var ms = reduce ? 4 : 16;
+    var cmd = parseCommand(userText);
+    var r = addBee("");
+    if (!cmd) {
+      try {
+        var answer = await askAI(userText);
+        await typeInto(r.bubble, answer, ms);
+      } catch (error) {
+        await typeInto(r.bubble, error.message || "Não consegui falar com a IA agora. Tente novamente.", ms);
+      }
+      return;
+    }
+    if (cmd.type === "code") {
+      await typeInto(r.bubble, "Abrindo o editor de código.", ms);
+      await openCode(cmd.arg);
+    } else if (cmd.type === "edit") {
+      await typeInto(r.bubble, cmd.text ? "Abrindo a edição com o seu texto." : "Abrindo a edição. Cole o texto no campo.", ms);
+      openEdit(cmd.style, cmd.text);
+    } else {
+      await typeInto(r.bubble, "Abrindo a transmissão.", ms);
+      openWatch(cmd.arg);
+    }
+  }
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text || busy) return;
+    busy = true; sendBtn.disabled = true;
+    input.value = "";
+    addUser(text);
+    await reply(text);
+    busy = false; sendBtn.disabled = false;
+    input.focus();
+  });
+
+  msgs.appendChild(el("div", "note", "Demonstração visual · respostas de exemplo"));
+  addUser("Oi, BEE! O que você faz?");
+  addBee("Oi! Eu sou a BEE. Diga “Programe um…”, “Edite de maneira…” ou “Quero assistir…” e eu abro a função para você.");
+
+  /* ---------- Voice orb ---------- */
+  var cv = document.getElementById("orb");
+  var cx = cv.getContext("2d");
+  var W = 0, H = 0, raf = 0, last = 0, T = 0, lvl = 0;
+  var phase = "idle", session = false, timer = 0, lineIdx = 0;
+
+  function fit() {
+    var r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", function () { if (current === "voz") fit(); });
+  if (window.ResizeObserver) new ResizeObserver(function () { if (current === "voz") fit(); }).observe(cv);
+
+  function envelope(t) {
+    if (phase === "speaking") {
+      var syl = Math.abs(Math.sin(t * 6.2)) * 0.6 + Math.abs(Math.sin(t * 9.7 + 1)) * 0.4;
+      var gate = Math.sin(t * 1.3) > -0.55 ? 1 : 0.12;
+      return syl * gate * (0.75 + 0.25 * Math.sin(t * 2.1));
+    }
+    if (phase === "listening") {
+      return 0.12 + 0.1 * Math.abs(Math.sin(t * 3.1)) + (Math.sin(t * 0.9) > 0.7 ? 0.25 * Math.abs(Math.sin(t * 8)) : 0);
+    }
+    return 0.03;
+  }
+
+  /* HUD da BEE: arcos e anel giram ao redor; o triângulo central fica parado.
+     A luz azul clara ao redor acompanha o ritmo da voz (lvl). */
+  var rot = 0, DEG = Math.PI / 180;
+  function sector(r0, r1, a0, a1) {
+    cx.beginPath();
+    cx.arc(0, 0, r1, a0 * DEG, a1 * DEG, false);
+    cx.arc(0, 0, r0, a1 * DEG, a0 * DEG, true);
+    cx.closePath();
+  }
+  function draw() {
+    var X = W / 2, Y = H * 0.47, S = Math.min(W * 0.43, H * 0.45), k = S / 630;
+    cx.clearRect(0, 0, W, H);
+
+    // luz azul de fundo + anel de pulso (seguem a voz)
+    var g = cx.createRadialGradient(X, Y, S * 0.25, X, Y, S * 1.55);
+    g.addColorStop(0, "rgba(143,219,255," + (0.06 + 0.26 * lvl).toFixed(3) + ")");
+    g.addColorStop(1, "rgba(143,219,255,0)");
+    cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+    cx.beginPath(); cx.arc(X, Y, S * (1.1 + 0.12 * lvl), 0, 6.2832);
+    cx.strokeStyle = "rgba(143,219,255," + (0.12 + 0.5 * lvl).toFixed(3) + ")"; cx.lineWidth = 1.5; cx.stroke();
+
+    // parte que gira: 3 arcos, anel fino e 3 marcas
+    cx.save();
+    cx.translate(X, Y); cx.rotate(rot);
+    cx.shadowColor = "rgba(143,219,255," + (0.35 + 0.55 * lvl).toFixed(3) + ")";
+    cx.shadowBlur = (6 + 30 * lvl) * (S / 160);
+    var gr = cx.createLinearGradient(0, -S, 0, S);
+    gr.addColorStop(0, "#FFF1A8"); gr.addColorStop(1, "#FDBE0F");
+    cx.fillStyle = gr; cx.strokeStyle = gr;
+    sector(555 * k, 630 * k, 150.4, 250.3); cx.fill();
+    sector(555 * k, 630 * k, -70.3, 29.6); cx.fill();
+    sector(555 * k, 630 * k, 65.2, 114.4); cx.fill();
+    cx.lineWidth = Math.max(1.5, 8 * k);
+    cx.beginPath(); cx.arc(0, 0, 460 * k, 0, 6.2832); cx.stroke();
+    cx.lineWidth = Math.max(2, 22 * k); cx.lineCap = "round";
+    [-90, 45, 135].forEach(function (d) {
+      var c = Math.cos(d * DEG), s = Math.sin(d * DEG);
+      cx.beginPath(); cx.moveTo(c * 395 * k, s * 395 * k); cx.lineTo(c * 525 * k, s * 525 * k); cx.stroke();
+    });
+    cx.restore();
+
+    // triângulo central: fixo
+    cx.save();
+    cx.translate(X, Y);
+    cx.shadowColor = "rgba(143,219,255," + (0.25 + 0.5 * lvl).toFixed(3) + ")";
+    cx.shadowBlur = (4 + 18 * lvl) * (S / 160);
+    var A = [-119 * k, -77 * k], B = [121 * k, -77 * k], C = [-2 * k, 140 * k], P = [0, 5 * k];
+    function tri(p, q, r, col) {
+      cx.beginPath(); cx.moveTo(p[0], p[1]); cx.lineTo(q[0], q[1]); cx.lineTo(r[0], r[1]); cx.closePath();
+      cx.fillStyle = col; cx.fill();
+    }
+    tri(A, B, P, "#FFF1A8"); tri(A, P, C, "#FFD84A"); tri(B, P, C, "#F2B600");
+    cx.shadowBlur = 0;
+    cx.strokeStyle = "#090C12"; cx.lineWidth = Math.max(1.5, 7 * k); cx.lineCap = "round";
+    cx.beginPath(); cx.moveTo(A[0], A[1]); cx.lineTo(P[0], P[1]); cx.lineTo(B[0], B[1]);
+    cx.moveTo(P[0], P[1]); cx.lineTo(C[0], C[1]); cx.stroke();
+    cx.restore();
+  }
+
+  function frame(ts) {
+    raf = requestAnimationFrame(frame);
+    var dt = Math.min((ts - last) / 1000 || 0.016, 0.05);
+    last = ts;
+    T += dt * (reduce ? 0.4 : 1);
+    var tgt = envelope(T);
+    // quick attack, slow release: the liquid keeps moving after the voice drops
+    lvl += (tgt - lvl) * (tgt > lvl ? 0.25 : 0.07);
+    rot += dt * (0.22 + lvl * 1.1) * (reduce ? 0.2 : 1);
+    if (W) draw();
+  }
+
+  function startLoop() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function stopLoop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } }
+
+  /* ---------- Voice session (visual demo) ---------- */
+  var mic = document.getElementById("mic");
+  var capTitle = document.getElementById("capTitle");
+  var capSub = document.getElementById("capSub");
+  var LINES = ["Oi! Em que posso ajudar hoje?", "Diga “Programe um…” para abrir o código.", "Diga “Quero assistir…” para abrir a transmissão."];
+  function setPhase(p) {
+    phase = p;
+    if (p === "idle") { capTitle.textContent = "Toque para conversar com a BEE"; capSub.textContent = "Demonstração visual da voz"; }
+    if (p === "listening") { capTitle.textContent = "Ouvindo…"; capSub.textContent = "Fale com a BEE"; }
+    if (p === "speaking") { capTitle.textContent = "BEE está falando"; capSub.textContent = LINES[lineIdx++ % LINES.length]; }
+  }
+  function cycle() {
+    if (!session) return;
+    setPhase("listening");
+    timer = setTimeout(function () {
+      if (!session) return;
+      setPhase("speaking");
+      timer = setTimeout(cycle, 5200);
+    }, 2600);
+  }
+  function startSession() {
+    session = true;
+    mic.setAttribute("aria-pressed", "true");
+    mic.setAttribute("aria-label", "Encerrar conversa por voz");
+    document.getElementById("micIcon").innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/>';
+    cycle();
+  }
+  function endSession() {
+    session = false; clearTimeout(timer);
+    mic.setAttribute("aria-pressed", "false");
+    mic.setAttribute("aria-label", "Iniciar conversa por voz");
+    document.getElementById("micIcon").innerHTML = '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>';
+    setPhase("idle");
+  }
+  mic.addEventListener("click", function () { session ? endSession() : startSession(); });
+
+  showTab(location.hash.replace("#", ""));
+})();
+
+</script>
+</body></html>

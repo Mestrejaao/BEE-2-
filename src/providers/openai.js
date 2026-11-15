@@ -8,7 +8,7 @@ export async function askOpenAI(messages, env) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-6-luna",
+      model: env.OPENAI_MODEL || "gpt-6-astra",
       instructions: "Você é a BEE, um assistente pessoal útil, claro e cuidadoso. Responda em português brasileiro quando o usuário escrever em português.",
       input: messages.map(({ role, content }) => ({ role, content }))
     }),

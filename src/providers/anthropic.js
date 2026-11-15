@@ -4,8 +4,8 @@ export async function askAnthropic(messages, env) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${env.ANTHROPIC_API_KEY}`,
-      "anthropic-version": "2026-10-21",
+      "x-api-key": env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json"
     },
     body: JSON.stringify({

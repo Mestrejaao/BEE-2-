@@ -115,6 +115,22 @@ test("returns 503 rather than bypassing a missing rate limiter binding", async (
   assert.equal(response.status, 503);
 });
 
+test("fails closed when the chat rate limiter errors", async () => {
+  const login = await worker.fetch(new Request("https://bee.example/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.10" },
+    body: JSON.stringify({ code: "test-access-code" })
+  }), env);
+  const { token } = await login.json();
+  const unavailableEnv = { ...env, CHAT_RATE_LIMITER: { limit: async () => { throw new Error("binding unavailable"); } } };
+  const response = await worker.fetch(new Request("https://bee.example/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ messages: [{ role: "user", content: "Oi!" }] })
+  }), unavailableEnv);
+  assert.equal(response.status, 503);
+});
+
 test("rejects chat requests without a valid session", async () => {
   const response = await worker.fetch(new Request("https://bee.example/api/chat", {
     method: "POST",

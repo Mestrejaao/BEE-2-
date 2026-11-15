@@ -3,15 +3,8 @@
   "name": "bee-ai-backend",
   "main": "src/index.js",
   "compatibility_date": "2026-11-15",
-  "assets": {
-    "directory": "./frontend",
-    "binding": "ASSETS",
-    "run_worker_first": [
-      "/api/*"
-    ]
-  },
   "vars": {
-    "ALLOWED_ORIGINS": "http://localhost:8787,http://127.0.0.1:8787"
+    "ALLOWED_ORIGINS": "https://mestrejaao.github.io,http://localhost:8787,http://127.0.0.1:8787"
   },
   "ratelimits": [
     {

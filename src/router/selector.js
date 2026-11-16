@@ -9,14 +9,23 @@ export function chooseProvider(messages = []) {
   const normalized = latest.toLocaleLowerCase("pt-BR");
   const complexByLength = latest.length > 1200;
   const complexByIntent = COMPLEXITY_HINTS.some((hint) => normalized.includes(hint));
+  // Preserve the existing primary routing policy: simple -> OpenAI, complex -> Claude.
   return complexByLength || complexByIntent ? "anthropic" : "openai";
 }
 
-export function getProviderOrder(preferred, env) {
+export function getProviderOrder(preferred, env = {}) {
   const available = {
     openai: Boolean(env.OPENAI_API_KEY),
-    anthropic: Boolean(env.ANTHROPIC_API_KEY)
+    anthropic: Boolean(env.ANTHROPIC_API_KEY),
+    gemini: Boolean(env.GEMINI_API_KEY)
   };
-  const order = [preferred, preferred === "openai" ? "anthropic" : "openai"];
-  return order.filter((provider, index) => available[provider] && order.indexOf(provider) === index);
+  const alternatives = preferred === "anthropic"
+    ? ["openai", "gemini"]
+    : preferred === "gemini"
+      ? ["openai", "anthropic"]
+      : ["anthropic", "gemini"];
+  const order = [preferred, ...alternatives];
+  return order.filter((provider, index) =>
+    available[provider] && order.indexOf(provider) === index
+  );
 }

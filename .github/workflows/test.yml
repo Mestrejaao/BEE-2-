@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,16 +21,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Report resolved Upstash versions
-        run: npm ls @upstash/ratelimit @upstash/redis --depth=0
-      - name: Preserve generated lockfile for reproducible install
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-lockfile
-          path: package-lock.json
-          if-no-files-found: error
+      - name: Generate and commit dependency lockfile
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore(deps): add npm lockfile"
+          git push
+      - name: Verify clean reproducible install
+        run: |
+          rm -rf node_modules
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ls @upstash/ratelimit @upstash/redis --depth=0
       - name: Validate Wrangler configuration
         run: node -e "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8'))"
       - name: Run automated tests

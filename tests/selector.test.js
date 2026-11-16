@@ -23,3 +23,22 @@ test("uses the available provider when the preferred one is not configured", () 
     ["openai"]
   );
 });
+
+test("appends Gemini after the existing OpenAI-first preference", () => {
+  assert.deepEqual(getProviderOrder("openai", {
+    OPENAI_API_KEY: "o", ANTHROPIC_API_KEY: "a", GEMINI_API_KEY: "g"
+  }), ["openai", "anthropic", "gemini"]);
+});
+
+test("appends Gemini after the existing Anthropic-first preference", () => {
+  assert.deepEqual(getProviderOrder("anthropic", {
+    OPENAI_API_KEY: "o", ANTHROPIC_API_KEY: "a", GEMINI_API_KEY: "g"
+  }), ["anthropic", "openai", "gemini"]);
+});
+
+test("skips unconfigured providers and never repeats a provider", () => {
+  assert.deepEqual(getProviderOrder("gemini", {
+    OPENAI_API_KEY: "o", GEMINI_API_KEY: "g"
+  }), ["gemini", "openai"]);
+  assert.deepEqual(getProviderOrder("openai", {}), []);
+});

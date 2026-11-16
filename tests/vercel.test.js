@@ -168,6 +168,11 @@ test("Vercel adapter forwards Gemini credentials and model only to the backend h
   const originalFetch = globalThis.fetch;
   let requestedUrl;
   globalThis.fetch = async (url, options) => {
+    if (String(url).includes("openai.com")) {
+      return new Response(JSON.stringify({ error: { message: "OpenAI mock unavailable" } }), {
+        status: 503, headers: { "Content-Type": "application/json" }
+      });
+    }
     requestedUrl = new URL(String(url));
     assert.equal(requestedUrl.searchParams.get("key"), "mock-gemini-key");
     assert.equal(requestedUrl.pathname, "/v1beta/models/gemini-test-model:generateContent");

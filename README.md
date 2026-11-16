@@ -18,7 +18,7 @@ Assistente pessoal com frontend estático e API modular em Cloudflare Workers.
 
 ## Desenvolvimento local
 
-Requer Node.js 20+.
+Requer **Node.js 22.12.0 ou superior** (mesma versão mínima declarada em `package.json` e compatível com a versão do Wrangler fixada no lockfile).
 
 1. Instale as dependências: `npm ci` (ou `npm install`).
 2. Crie `.dev.vars` na raiz (não versionar):
@@ -70,13 +70,13 @@ O adaptador Gemini converte mensagens `assistant` para `model`, mantém mensagen
 - Chaves e código de acesso nunca são enviados ao navegador.
 - Autenticação, sessões, CORS e rate limiting permanecem inalterados.
 - O Worker continua usando os bindings nativos Cloudflare já existentes.
-- A entrada Vercel continua encaminhando apenas variáveis server-side ao handler compartilhado; credenciais Upstash e política fail-closed permanecem inalteradas.
+- A entrada Vercel continua encaminhando apenas variáveis server-side ao handler compartilhado; credenciais Upstash e política fail-closed permanecem obrigatórias.
 - O histórico permanece no navegador; não há persistência server-side nesta etapa.
 
 ## Verificações
 
-Execute `npm test` para rodar testes com mocks. Os testes não fazem chamadas reais às APIs Gemini, OpenAI ou Anthropic. `npm run dev` inicia o Worker localmente; nenhum deploy é executado.
+Execute `npm ci` e `npm test` com Node.js 22.12.0 ou superior para instalar as versões exatas do lockfile e rodar os testes com mocks. Os testes não fazem chamadas reais às APIs Gemini, OpenAI ou Anthropic. `npm run dev` inicia o Worker localmente; nenhum deploy é executado.
 
 ## Migração Vercel (não publicada)
 
-A Function `api/[...path].js` continua compartilhando o handler de `src/index.js`. Além das variáveis já documentadas, `GEMINI_API_KEY` e `GEMINI_MODEL` são lidas somente do ambiente server-side. A proteção Upstash permanece obrigatória e fail-closed. Não configure recursos nem credenciais sem avaliar custos e autorizar explicitamente.
+A Function `api/[...path].js` continua compartilhando o handler de `src/index.js`. Além das variáveis já documentadas, `GEMINI_API_KEY` e `GEMINI_MODEL` são lidas somente do ambiente server-side. O limitador Upstash valida a URL REST HTTPS e o token antes de inicializar; respostas incompletas, inválidas, autenticação negada e falhas de conexão permanecem fail-closed. Não configure recursos nem credenciais sem avaliar custos e autorizar explicitamente.

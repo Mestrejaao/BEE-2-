@@ -11,6 +11,26 @@ const env = {
   CHAT_RATE_LIMITER: { limit: async () => ({ success: true }) }
 };
 
+async function createLegacyTestToken() {
+  const payload = {
+    sub: "bee-user",
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12
+  };
+  const body = btoa(new TextEncoder().encode(JSON.stringify(payload)).reduce((data, byte) => data + String.fromCharCode(byte), ""))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(env.SESSION_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  const encodedSignature = btoa(Array.from(new Uint8Array(signature), (byte) => String.fromCharCode(byte)).join(""))
+    .replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  return body + "." + encodedSignature;
+}
+
 test("health endpoint responds without exposing configuration", async () => {
   const response = await worker.fetch(new Request("https://bee.example/api/health"), env);
   assert.equal(response.status, 200);
@@ -140,6 +160,22 @@ test("rejects chat requests without a valid session before touching the rate lim
   const response = await worker.fetch(new Request("https://bee.example/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: "Bearer invalid-session" },
+    body: JSON.stringify({ messages: [{ role: "user", content: "Oi!" }] })
+  }), guardedEnv);
+  assert.equal(response.status, 401);
+  assert.equal(limiterCalls, 0);
+});
+
+test("rejects a correctly signed legacy chat session before touching the rate limiter", async () => {
+  let limiterCalls = 0;
+  const legacyToken = await createLegacyTestToken();
+  const guardedEnv = {
+    ...env,
+    CHAT_RATE_LIMITER: { limit: async () => { limiterCalls += 1; return { success: true }; } }
+  };
+  const response = await worker.fetch(new Request("https://bee.example/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${legacyToken}` },
     body: JSON.stringify({ messages: [{ role: "user", content: "Oi!" }] })
   }), guardedEnv);
   assert.equal(response.status, 401);

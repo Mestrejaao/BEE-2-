@@ -12,6 +12,16 @@ function fromBase64Url(value) {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
+function isValidSessionId(value) {
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]{22}$/.test(value)) return false;
+  try {
+    const decoded = fromBase64Url(value);
+    return decoded.byteLength === 16 && toBase64Url(decoded) === value;
+  } catch {
+    return false;
+  }
+}
+
 async function getSigningKey(secret) {
   return crypto.subtle.importKey(
     "raw",
@@ -54,7 +64,10 @@ export async function verifySession(token, secret, now = Date.now()) {
     );
     if (!valid) return false;
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(parts[0])));
-    return payload.sub === "bee-user" && Number.isInteger(payload.exp) && payload.exp > Math.floor(now / 1000);
+    return payload.sub === "bee-user" &&
+      isValidSessionId(payload.jti) &&
+      Number.isInteger(payload.exp) &&
+      payload.exp > Math.floor(now / 1000);
   } catch {
     return false;
   }

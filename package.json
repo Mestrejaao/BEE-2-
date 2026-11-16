@@ -9,7 +9,7 @@
     "dev:vercel": "npx vercel dev"
   },
   "devDependencies": {
-    "wrangler": "^4.50.0"
+    "wrangler": "4.162.0"
   },
   "dependencies": {
     "@upstash/ratelimit": "2.2.1",

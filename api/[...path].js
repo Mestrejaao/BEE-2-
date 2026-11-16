@@ -20,8 +20,8 @@ export function sessionRateLimitKey(token) {
 }
 
 /**
- * Vercel Node.js Function adapter. Redis credentials are read only from the
- * server environment and are never returned to the browser.
+ * Vercel Node.js Function adapter. Provider and Redis credentials are read only
+ * from the server environment and are never returned to the browser.
  */
 export function createVercelHandler(readEnv = () => process.env, buildLimiters = createUpstashRateLimiters) {
   return {
@@ -32,8 +32,10 @@ export function createVercelHandler(readEnv = () => process.env, buildLimiters =
         SESSION_SECRET: source.SESSION_SECRET,
         OPENAI_API_KEY: source.OPENAI_API_KEY,
         ANTHROPIC_API_KEY: source.ANTHROPIC_API_KEY,
+        GEMINI_API_KEY: source.GEMINI_API_KEY,
         OPENAI_MODEL: source.OPENAI_MODEL,
         ANTHROPIC_MODEL: source.ANTHROPIC_MODEL,
+        GEMINI_MODEL: source.GEMINI_MODEL,
         ALLOWED_ORIGINS: source.ALLOWED_ORIGINS ||
           "https://mestrejaao.github.io,http://localhost:8787,http://127.0.0.1:8787"
       };

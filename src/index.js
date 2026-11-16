@@ -2,6 +2,7 @@ import { createSession, verifySession, constantTimeEqual } from "./security/sess
 import { chooseProvider, getProviderOrder } from "./router/selector.js";
 import { askOpenAI } from "./providers/openai.js";
 import { askAnthropic } from "./providers/anthropic.js";
+import { askGemini } from "./providers/gemini.js";
 
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 const MAX_BODY_BYTES = 32 * 1024;
@@ -134,9 +135,9 @@ async function handleChat(request, env, cors, options = {}) {
 
   const preferred = chooseProvider(body.messages);
   const order = getProviderOrder(preferred, env);
-  if (!order.length) return json({ error: "Nenhuma IA está configurada. Adicione OPENAI_API_KEY ou ANTHROPIC_API_KEY nos secrets." }, 503, cors);
+  if (!order.length) return json({ error: "Nenhuma IA está configurada. Adicione OPENAI_API_KEY, ANTHROPIC_API_KEY ou GEMINI_API_KEY nos secrets." }, 503, cors);
 
-  const adapters = { openai: askOpenAI, anthropic: askAnthropic };
+  const adapters = { openai: askOpenAI, anthropic: askAnthropic, gemini: askGemini };
   for (const provider of order) {
     try {
       const answer = await adapters[provider](body.messages, env);

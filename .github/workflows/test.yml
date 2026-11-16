@@ -1,0 +1,31 @@
+name: BEE backend checks
+
+on:
+  push:
+    branches:
+      - feature/bee-ai-backend
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies reproducibly
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify resolved dependency versions
+        run: npm ls @upstash/ratelimit @upstash/redis wrangler --depth=0
+      - name: Validate Wrangler configuration and Worker bundle without deploying
+        run: npx wrangler deploy --dry-run --outdir /tmp/bee-wrangler-dry-run
+      - name: Run automated tests
+        run: npm test

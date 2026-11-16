@@ -35,10 +35,13 @@ export async function askGemini(messages, env) {
   if (!env.GEMINI_API_KEY) throw new Error("Google Gemini provider is not configured.");
 
   const model = env.GEMINI_MODEL || "gemini-2.5-flash";
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const response = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": env.GEMINI_API_KEY
+    },
     body: JSON.stringify({
       systemInstruction: {
         parts: [{ text: toGeminiSystemInstruction(messages) }]

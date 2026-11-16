@@ -3,6 +3,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 
 const TIMEOUT_MS = 1500;
 const UPSTASH_REST_HOST_SUFFIX = ".upstash.io";
+const BLOCK_REASONS = new Set(["rateLimit", "denyList"]);
 
 function isValidRestUrl(value) {
   if (typeof value !== "string" || !value || value !== value.trim()) return false;
@@ -31,8 +32,10 @@ function isValidLimiterResult(result) {
       result.remaining < 0 || result.remaining > result.limit) return false;
   if (!Number.isSafeInteger(result.reset) || result.reset <= 0) return false;
 
-  // A timeout or any unrecognized reason is inconclusive, not permission.
-  if (result.reason !== undefined) return false;
+  if (result.reason !== undefined) {
+    // Explicit, recognized denials are safe; timeout and unknown reasons are not.
+    if (result.success || !BLOCK_REASONS.has(result.reason)) return false;
+  }
   return true;
 }
 

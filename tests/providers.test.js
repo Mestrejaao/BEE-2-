@@ -90,7 +90,7 @@ test("Gemini adapter uses the official generateContent API and extracts text", a
     const parsed = new URL(String(url));
     assert.equal(parsed.origin, "https://generativelanguage.googleapis.com");
     assert.equal(parsed.pathname, "/v1beta/models/gemini-2.5-flash:generateContent");
-    assert.equal(parsed.searchParams.get("key"), "mock-gemini-key");
+    assert.equal(options.headers["x-goog-api-key"], "mock-gemini-key");
     assert.equal(options.method, "POST");
     assert.equal(options.headers["Content-Type"], "application/json");
     const body = JSON.parse(options.body);
@@ -230,4 +230,18 @@ test("returns 503 when no provider credentials are configured", async () => {
     mockFetch: async () => { throw new Error("No provider should be called"); }
   });
   assert.equal(result.response.status, 503);
+});
+
+
+test("Gemini works as the only configured provider", async () => {
+  const result = await chatWithMockedProviders({
+    prompt: "Oi!",
+    envOverrides: { OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "", GEMINI_API_KEY: "mock-gemini-key" },
+    mockFetch: async (url) => {
+      assert.match(String(url), /generativelanguage\.googleapis\.com/);
+      return jsonResponse({ candidates: [{ content: { parts: [{ text: "Gemini sozinho." }] } }] });
+    }
+  });
+  assert.equal(result.response.status, 200);
+  assert.deepEqual(result.body, { answer: "Gemini sozinho.", provider: "gemini" });
 });

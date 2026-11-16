@@ -174,7 +174,7 @@ test("Vercel adapter forwards Gemini credentials and model only to the backend h
       });
     }
     requestedUrl = new URL(String(url));
-    assert.equal(requestedUrl.searchParams.get("key"), "mock-gemini-key");
+    assert.equal(options.headers["x-goog-api-key"], "mock-gemini-key");
     assert.equal(requestedUrl.pathname, "/v1beta/models/gemini-test-model:generateContent");
     assert.equal(options.method, "POST");
     return new Response(JSON.stringify({

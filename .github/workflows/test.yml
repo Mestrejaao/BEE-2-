@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
@@ -21,19 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Generate and commit dependency lockfile
-        run: |
-          npm install --ignore-scripts --no-audit --no-fund
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json
-          git commit -m "chore(deps): add npm lockfile"
-          git push
-      - name: Verify clean reproducible install
-        run: |
-          rm -rf node_modules
-          npm ci --ignore-scripts --no-audit --no-fund
-          npm ls @upstash/ratelimit @upstash/redis --depth=0
+      - name: Install dependencies reproducibly
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify resolved dependency versions
+        run: npm ls @upstash/ratelimit @upstash/redis wrangler --depth=0
       - name: Validate Wrangler configuration
         run: node -e "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8'))"
       - name: Run automated tests

@@ -20,6 +20,14 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Report resolved Upstash versions
+        run: npm ls @upstash/ratelimit @upstash/redis --depth=0
+      - name: Preserve generated lockfile for reproducible install
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-lockfile
+          path: package-lock.json
+          if-no-files-found: error
       - name: Validate Wrangler configuration
         run: node -e "JSON.parse(require('node:fs').readFileSync('wrangler.jsonc', 'utf8'))"
       - name: Run automated tests

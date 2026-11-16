@@ -155,3 +155,39 @@ test("Vercel adapter rejects an unapproved origin", async () => {
   }));
   assert.equal(response.status, 403);
 });
+
+
+test("Vercel adapter forwards Gemini credentials and model only to the backend handler", async () => {
+  const token = await createSession(secret);
+  const source = {
+    ...env,
+    GEMINI_API_KEY: "mock-gemini-key",
+    GEMINI_MODEL: "gemini-test-model"
+  };
+  const handler = createVercelHandler(() => source, allowedLimiters);
+  const originalFetch = globalThis.fetch;
+  let requestedUrl;
+  globalThis.fetch = async (url, options) => {
+    requestedUrl = new URL(String(url));
+    assert.equal(requestedUrl.searchParams.get("key"), "mock-gemini-key");
+    assert.equal(requestedUrl.pathname, "/v1beta/models/gemini-test-model:generateContent");
+    assert.equal(options.method, "POST");
+    return new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: "Gemini via Vercel." }] } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const response = await handler.fetch(request("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messages: [{ role: "user", content: "Oi!" }] })
+    }));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      answer: "Gemini via Vercel.",
+      provider: "gemini"
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

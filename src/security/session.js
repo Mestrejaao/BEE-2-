@@ -23,8 +23,12 @@ async function getSigningKey(secret) {
 }
 
 export async function createSession(secret, now = Date.now()) {
+  // A random per-session identifier prevents tokens created in the same
+  // second from colliding (the payload is signed together with this nonce).
+  const nonce = crypto.getRandomValues(new Uint8Array(16));
   const payload = {
     sub: "bee-user",
+    jti: toBase64Url(nonce),
     exp: Math.floor(now / 1000) + 60 * 60 * 12
   };
   const body = toBase64Url(encoder.encode(JSON.stringify(payload)));

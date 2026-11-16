@@ -10,6 +10,14 @@ const MAX_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 8000;
 const RATE_LIMIT_HEADERS = { "Retry-After": "60" };
 
+async function chatSessionRateLimitKey(token) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+  return `bee-user:chat:${fingerprint}`;
+}
+
 function trustedClientIp(request) {
   // Cloudflare overwrites CF-Connecting-IP at its edge. Never use client-controlled
   // X-Forwarded-For / X-Real-IP headers as an identity source.
@@ -120,8 +128,11 @@ async function handleChat(request, env, cors, options = {}) {
   }
 
   const limiter = options.chatRateLimiter ?? env.CHAT_RATE_LIMITER;
-  // Preserve the existing Cloudflare key; Vercel supplies a SHA-256 session key.
-  const chatKey = options.chatIdentifier ? await options.chatIdentifier(token) : "bee-user:chat";
+  // Hash the verified bearer token so each signed session gets a stable,
+  // independent key without exposing the raw credential to the rate limiter.
+  const chatKey = options.chatIdentifier
+    ? await options.chatIdentifier(token)
+    : await chatSessionRateLimitKey(token);
   if (typeof chatKey !== "string" || !chatKey) return rateLimitUnavailable(cors);
   const rate = await checkRateLimit(limiter, chatKey);
   if (rate === "limited") return rateLimitResponse(cors);
